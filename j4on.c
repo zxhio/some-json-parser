@@ -27,9 +27,6 @@
         (j4on)->j4_value.j4_type = (type);                                     \
     } while (0)
 
-const char *value_type_stringify[8] = {"unknown", "null",   "false", "true",
-                                       "number",  "string", "array", "object"};
-
 void j4on_load(struct json *json, const char *filename) {
     FILE *fp = fopen(filename, "r");
     if (!fp)
@@ -216,4 +213,26 @@ struct j4on_value *j4on_parse_value(struct json *json) {
     default:
         return j4on_parse_number(json);
     }
+}
+
+// linked the value abreast in first depth
+void j4on_parse(struct slist *head, struct json *json) {
+    struct j4on_value *value;
+    struct slist *list = head;
+    skip_whitespce(json);
+    while (*json->content != '\0') {
+        value = j4on_parse_value(json);
+        list->breadth = &value->j4_list;
+        list = list->breadth;
+    }
+}
+
+void j4on_travel(struct slist *list) {
+    if (!list)
+        return;
+    
+    struct j4on_value* entry = slist_entry(list, struct j4on_value, j4_list);
+    // printf("type: %s\n", value_type_stringify[entry->j4_type]);
+    j4on_travel(entry->j4_list.breadth);
+    j4on_travel(entry->j4_list.depth);
 }
