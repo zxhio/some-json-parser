@@ -5,13 +5,13 @@
 #ifndef J4ON_H
 #define J4ON_H
 
-#include <stdio.h>
+#include <stddef.h> // NULL, offsetof
 
 struct slist {
     struct slist *breadth, *depth;
 };
 
-#define offsetof(type, member) ((size_t) & ((type *)0)->member)
+// #define offsetof(type, member) ((size_t) & ((type *)0)->member)
 
 #define container_of(ptr, type, member)                                        \
     (type *)((char *)ptr - offsetof(type, member))
@@ -21,10 +21,11 @@ struct slist {
 #define slist_for_each(pos, head)                                              \
     for (pos = (head)->breadth; pos != NULL; pos = pos->breadth)
 
-void slist_init(struct slist *list) {
-    list->breadth = NULL;
-    list->depth = NULL;
-}
+#define slist_init(list)                                                       \
+    do {                                                                       \
+        (list)->breadth = NULL;                                                \
+        (list)->depth = NULL;                                                  \
+    } while (0)
 
 typedef enum {
     J4_NULL = 1,
@@ -35,15 +36,6 @@ typedef enum {
     J4_ARRAY,
     J4_OBJECT
 } value_type;
-
-const char *value_type_stringify[8] = {"unknown",
-                                       "null",
-                                       "false",
-                                       "true",
-                                       "number",
-                                       "string",
-                                       "array",
-                                       "object"};
 
 struct j4on_key {
     char *key;
@@ -83,10 +75,12 @@ typedef struct j4on_object {
     struct j4on_value j4_value;
 } j4on_object;
 
-struct json;
+struct json {
+    char *content;
+};
 
-char *j4on_load(const char *filename);
-void j4on_parse(struct slist *list, struct json *json);
+void j4on_load(struct json *json, const char *filename);
+void j4on_parse(struct slist **list, struct json *json);
 char *j4on_format(struct slist *list, const char *json);
 
 #endif // J4ON_H
