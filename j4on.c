@@ -11,15 +11,16 @@
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
+#include <stdarg.h>
 
-#define LOG(format, x)                                                         \
-    fprintf(stderr, "%s:%d, " format " \n", __FILE__, __LINE__, x);
+#define LOG(format, args...)                                                   \
+    fprintf(stderr, "%s: %d, " format "\n", __func__, __LINE__, ##args);
 
-#define LOG_ERR(format, x)                                                     \
-    do {                                                                       \
-        LOG(format, x);                                                        \
-        exit(0);                                                               \
-    } while (0)
+#define LOG_EXPECT(cond, format, args...)                                      \
+    if (!(cond)) {                                                             \
+        LOG(format, args);                                                     \
+        exit(-1);                                                              \
+    }
 
 #define J4ON_VALUE_INIT(j4on, value, type)                                     \
     do {                                                                       \
@@ -27,10 +28,12 @@
         (j4on)->j4_value.j4_type = (type);                                     \
     } while (0)
 
+const char *value_type_stringify[8] = {"UNKNOWN", "NULL",   "FALSE", "TRUE",
+                                       "NUMBER",  "STRING", "ARRAY", "OBJECT"};
+
 void j4on_load(struct json *json, const char *filename) {
     FILE *fp = fopen(filename, "r");
-    if (!fp)
-        LOG_ERR("File %s open failed.", filename);
+    LOG_EXPECT(fp, "File %s open failed.", filename);
 
     fseek(fp, 0, SEEK_END);
     int len = ftell(fp);
@@ -78,10 +81,9 @@ struct j4on_value *j4on_parse_literal(struct json *json, const char *literal,
                                       size_t len, value_type type) {
     const char *q = literal;
     char *p = json->content;
-    for (size_t i = 0; i < len; i++) {
-        if (*p++ != *q++)
-            LOG_ERR("Expeted '%s'", literal);
-    }
+    for (size_t i = 0; i < len; i++)
+        LOG_EXPECT(*p++ == *q++, "expeted '%s', actual '%.*s'", literal, 10,
+                   json->content);
 
     json->content = p;
 
@@ -100,13 +102,13 @@ struct j4on_value *j4on_parse_number(struct json *json) {
         p++;
 
     // integer
+    LOG_EXPECT(isdigit(*p), "Expected digit, actual '%.*s'", 10, json->content);
+
     if (*p == '0') {
         p++;
     } else if (isdigit(*p)) {
         while (isdigit(*p))
             p++;
-    } else {
-        LOG_ERR("Expected digit, actual '%', %s", json->content);
     }
 
     // fractional part
@@ -124,14 +126,14 @@ struct j4on_value *j4on_parse_number(struct json *json) {
     while (isdigit(*p))
         p++;
 
-    // character to number parse completion
-    json->content = p;
-
     // converting parsed string to number and keep the number in correct range
     double number = strtod(q, &p);
-    if (errno == ERANGE && (number == HUGE_VAL || number == -HUGE_VAL)) {
-        LOG("Numerical result out of range: %lf", number)
-    }
+    LOG_EXPECT(errno != ERANGE && (number != HUGE_VAL && number != -HUGE_VAL),
+               "Numerical result out of range: '%lf' at '%.*s'", number, 24,
+               json->content)
+
+    // character to number parse completion
+    json->content = p;
 
     // handle new json node
     j4on_number *j4_number = (j4on_number *)malloc(sizeof(j4on_number));
@@ -174,11 +176,11 @@ struct j4on_value *j4on_parse_string(struct json *json) {
                 p++;
                 break;
             default:
-                LOG_ERR("Illegal escape character '\%c'.", *p);
+                LOG("Illegal escape character '\%c'.", *p);
                 break;
             }
         } else {
-            LOG_ERR("Illegal character '%c'.", *p);
+            LOG("Illegal character '%c'.", *p);
         }
         if (*p == '\"') {
             p++;
@@ -230,9 +232,9 @@ void j4on_parse(struct slist *head, struct json *json) {
 void j4on_travel(struct slist *list) {
     if (!list)
         return;
-    
-    struct j4on_value* entry = slist_entry(list, struct j4on_value, j4_list);
-    // printf("type: %s\n", value_type_stringify[entry->j4_type]);
+
+    struct j4on_value *entry = slist_entry(list, struct j4on_value, j4_list);
+    printf("type: %s\n", value_type_stringify[entry->j4_type]);
     j4on_travel(entry->j4_list.breadth);
     j4on_travel(entry->j4_list.depth);
 }

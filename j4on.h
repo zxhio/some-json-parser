@@ -75,9 +75,6 @@ struct json {
     char *content;
 };
 
-const char *value_type_stringify[8] = {"unknown", "null",   "false", "true",
-                                       "number",  "string", "array", "object"};
-
 void j4on_load(struct json *json, const char *filename);
 void j4on_parse(struct slist *list, struct json *json);
 void j4on_travel(struct slist *list);
