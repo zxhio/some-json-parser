@@ -1,3 +1,12 @@
 [
-	true
+	true,
+	false,
+	null,
+	301.3e30,
+	[
+		true,
+		false,
+		null,
+		301.3e30
+	]
 ]

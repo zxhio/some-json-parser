@@ -39,6 +39,8 @@ void j4on_load(struct json *json, const char *filename) {
     int len = ftell(fp);
     fseek(fp, 0, SEEK_SET);
     json->content = (char *)malloc(len + 1);
+     // avoid new line's diff in CRLF and LF
+    memset(json->content, '\0', len + 1); 
     fread(json->content, sizeof(char), len, fp);
     json->content[len] = '\0';
 }
