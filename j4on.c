@@ -43,6 +43,11 @@ void j4on_load(struct json *json, const char *filename) {
     memset(json->content, '\0', len + 1);
     fread(json->content, sizeof(char), len, fp);
     json->content[len] = '\0';
+    fclose(fp);
+}
+
+void j4on_free(struct json *json) {
+    free(json->content);
 }
 
 static void skip_whitespace(struct json *json) {

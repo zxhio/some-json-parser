@@ -76,6 +76,7 @@ struct json {
 };
 
 void j4on_load(struct json *json, const char *filename);
+void j4on_free(struct json *json);
 void j4on_parse(struct slist *list, struct json *json);
 void j4on_travel(struct slist *list);
 char *j4on_format(struct slist *list, const char *json);
