@@ -43,42 +43,23 @@ void j4on_load(struct json *json, const char *filename) {
     json->content[len] = '\0';
 }
 
-void skip_whitespce(struct json *json) {
+static void skip_whitespace(struct json *json) {
     char *p = json->content;
     while (*p == ' ' || *p == '\r' || *p == '\n' || *p == '\t')
         p++;
     json->content = p;
 }
 
-struct j4on_key *j4on_parse_key(struct json *json) {
-    skip_whitespce(json);
-    char *p = json->content;
-
-    struct j4on_key *j4_key =
-        (struct j4on_key *)malloc(sizeof(struct j4on_key));
-    j4_key->k_len = 0;
-
-    if (*p != '\"') { // key is ""
-        j4_key->key = (char *)malloc(sizeof(char));
-        *j4_key->key = '\0';
-        return j4_key;
-    }
-
-    p++; // skip '\"'
-
-    while (*p++ != '\"') {
-        j4_key->k_len++;
-    }
-
-    j4_key->key = (char *)malloc(j4_key->k_len + 1);
-    memmove(j4_key->key, ++json->content, j4_key->k_len);
-    j4_key->key[j4_key->k_len] = '\0';
-    json->content = p;
-    return j4_key;
+static void parse_whitespace(char **str) {
+    char *p = *str;
+    while (*p == ' ' || *p == '\r' || *p == '\n' || *p == '\t')
+        p++;
+    *str = p;
 }
 
-struct j4on_value *j4on_parse_literal(struct json *json, const char *literal,
-                                      size_t len, value_type type) {
+static struct j4on_value *j4on_parse_literal(struct json *json,
+                                             const char *literal, size_t len,
+                                             value_type type) {
     const char *q = literal;
     char *p = json->content;
     for (size_t i = 0; i < len; i++)
@@ -93,7 +74,7 @@ struct j4on_value *j4on_parse_literal(struct json *json, const char *literal,
     return &j4_literal->j4_value;
 }
 
-struct j4on_value *j4on_parse_number(struct json *json) {
+static struct j4on_value *j4on_parse_number(struct json *json) {
     char *p = json->content;
     char *q = p;
 
@@ -142,7 +123,7 @@ struct j4on_value *j4on_parse_number(struct json *json) {
     return &j4_number->j4_value;
 }
 
-struct j4on_value *j4on_parse_string(struct json *json) {
+static struct j4on_value *j4on_parse_string(struct json *json) {
     char *p = json->content;
     p++; // skip '\"'
     while (*p != '\0') {
@@ -201,8 +182,73 @@ struct j4on_value *j4on_parse_string(struct json *json) {
     return &j4_string->j4_value;
 }
 
-struct j4on_value *j4on_parse_value(struct json *json) {
-    skip_whitespce(json);
+static struct j4on_value *j4on_parse_value(struct json *json);
+
+static struct j4on_value *j4on_parse_array(struct json *json) {
+    json->content++;
+
+    j4on_array *j4_array = (j4on_array *)malloc(sizeof(j4on_array));
+    J4ON_VALUE_INIT(j4_array, j4_array->j4_value, J4_ARRAY);
+
+    struct slist *list;
+    struct j4on_value *value;
+    while (*json->content != '\0') {
+        value = j4on_parse_value(json);
+
+        if (!j4_array->j4_value.j4_list.depth) {
+            j4_array->j4_value.j4_list.depth = &value->j4_list;
+            list = j4_array->j4_value.j4_list.depth;
+        } else {
+            list->breadth = &value->j4_list;
+            list = list->breadth;
+        }
+
+        skip_whitespace(json);
+        if (*json->content == ']') {
+            break;
+        } else if (*json->content == ',') {
+            json->content++;
+            skip_whitespace(json);
+            LOG_EXPECT(*json->content != ']' && *json->content != '\0',
+                       "Expected character ']', actual '%c' in string '%.*s'",
+                       *json->content, 16, json->content);
+        }
+    }
+
+    json->content++; // ']'
+
+    return &j4_array->j4_value;
+}
+
+static struct j4on_key *j4on_parse_key(struct json *json) {
+    skip_whitespace(json);
+    char *p = json->content;
+
+    struct j4on_key *j4_key =
+        (struct j4on_key *)malloc(sizeof(struct j4on_key));
+    j4_key->k_len = 0;
+
+    if (*p != '\"') { // key is ""
+        j4_key->key = (char *)malloc(sizeof(char));
+        *j4_key->key = '\0';
+        return j4_key;
+    }
+
+    p++; // skip '\"'
+
+    while (*p++ != '\"') {
+        j4_key->k_len++;
+    }
+
+    j4_key->key = (char *)malloc(j4_key->k_len + 1);
+    memmove(j4_key->key, ++json->content, j4_key->k_len);
+    j4_key->key[j4_key->k_len] = '\0';
+    json->content = p;
+    return j4_key;
+}
+
+static struct j4on_value *j4on_parse_value(struct json *json) {
+    skip_whitespace(json);
     switch (*json->content) {
     case 'n':
         return j4on_parse_literal(json, "null", 4, J4_NULL);
@@ -212,6 +258,8 @@ struct j4on_value *j4on_parse_value(struct json *json) {
         return j4on_parse_literal(json, "false", 5, J4_FALSE);
     case '\"':
         return j4on_parse_string(json);
+    case '[':
+        return j4on_parse_array(json);
     default:
         return j4on_parse_number(json);
     }
@@ -221,7 +269,7 @@ struct j4on_value *j4on_parse_value(struct json *json) {
 void j4on_parse(struct slist *head, struct json *json) {
     struct j4on_value *value;
     struct slist *list = head;
-    skip_whitespce(json);
+    skip_whitespace(json);
     while (*json->content != '\0') {
         value = j4on_parse_value(json);
         list->breadth = &value->j4_list;
