@@ -34,13 +34,9 @@ typedef enum {
     J4_NUMBER,
     J4_STRING,
     J4_ARRAY,
-    J4_OBJECT
+    J4_OBJECT,
+    J4_PAIR
 } value_type;
-
-struct j4on_key {
-    char *key;
-    size_t k_len;
-};
 
 struct j4on_value {
     value_type j4_type;
@@ -67,9 +63,13 @@ typedef struct j4on_array {
 } j4on_array;
 
 typedef struct j4on_object {
-    struct j4on_key j4_key;
     struct j4on_value j4_value;
 } j4on_object;
+
+typedef struct j4on_pair {
+    struct j4on_string j4_key;
+    struct j4on_value j4_value;
+} j4on_pair;
 
 struct json {
     char *content;

@@ -46,9 +46,8 @@ void j4on_load(struct json *json, const char *filename) {
     fclose(fp);
 }
 
-void j4on_free(struct json *json) {
-    free(json->content);
-}
+// \TODO Fix free error, json->content arrived end after parse.
+void j4on_free(struct json *json) { free(json->content); }
 
 static void skip_whitespace(struct json *json) {
     char *p = json->content;
@@ -142,47 +141,38 @@ static struct j4on_value *j4on_parse_string(struct json *json) {
     char *p = json->content;
     p++; // skip '\"'
     while (*p != '\0') {
-        if (isgraph(*p))
-            p++;
-        else if (*p == '\\') {
-            p++;
+        if (*p == '\\') {
+            p++; // skip '\\'
             switch (*p) {
             case '\"':
-                p++;
                 break;
             case '\\':
-                p++;
                 break;
             case '/':
-                p++;
                 break;
             case 'b':
-                p++;
                 break;
             case 'f':
-                p++;
                 break;
             case 'n':
-                p++;
                 break;
             case 'r':
-                p++;
                 break;
             case 't':
-                p++;
                 break;
             default:
                 LOG("Illegal escape character '\%c'.", *p);
                 break;
             }
-        } else {
-            LOG("Illegal character '%c'.", *p);
-        }
-        if (*p == '\"') {
-            p++;
+        } else if (*p == '\"') {
             break;
         }
+        p++;
     }
+
+    LOG_EXPECT(*p == '\"', "Expected '\"', actual '%c' in string '%.*s'", *p,
+               16, p);
+    p++; // skip '\"'
 
     j4on_string *j4_string = (j4on_string *)malloc(sizeof(j4on_string));
     j4_string->s_len = p - json->content - 2;
@@ -210,6 +200,7 @@ static struct j4on_value *j4on_parse_array(struct json *json) {
     while (*json->content != '\0') {
         value = j4on_parse_value(json);
 
+        // link the new node by the list, and j4_array as the array list head.
         if (!j4_array->j4_value.j4_list.depth) {
             j4_array->j4_value.j4_list.depth = &value->j4_list;
             list = j4_array->j4_value.j4_list.depth;
@@ -218,6 +209,7 @@ static struct j4on_value *j4on_parse_array(struct json *json) {
             list = list->breadth;
         }
 
+        // judge whether the current value is the last value of j4_array.
         skip_whitespace(json);
         if (*json->content == ']') {
             break;
@@ -231,6 +223,9 @@ static struct j4on_value *j4on_parse_array(struct json *json) {
     }
 
     json->content++; // ']'
+
+    // judge whether the current array is the last value of
+    // its parent object(array/object)
     if (!is_value_at_end(json))
         LOG_EXPECT(*json->content == ',',
                    "Expected character ',', actual '%c' in string '%.*s'",
@@ -239,31 +234,44 @@ static struct j4on_value *j4on_parse_array(struct json *json) {
     return &j4_array->j4_value;
 }
 
-static struct j4on_key *j4on_parse_key(struct json *json) {
+static struct j4on_value *j4on_parse_object(struct json *json) {
+    json->content++;
     skip_whitespace(json);
-    char *p = json->content;
 
-    struct j4on_key *j4_key =
-        (struct j4on_key *)malloc(sizeof(struct j4on_key));
-    j4_key->k_len = 0;
+    j4on_object *j4_object = (j4on_object *)malloc(sizeof(j4on_object));
+    J4ON_VALUE_INIT(j4_object, j4_object->j4_value, J4_OBJECT);
 
-    if (*p != '\"') { // key is ""
-        j4_key->key = (char *)malloc(sizeof(char));
-        *j4_key->key = '\0';
-        return j4_key;
+    struct slist *list;
+    struct j4on_value *key, *value;
+    while (*json->content != '\0') {
+        key = j4on_parse_string(json);
+        // parse ':'
+        skip_whitespace(json);
+        json->content++;
+        skip_whitespace(json);
+        value = j4on_parse_value(json);
+        // parse ','
+        skip_whitespace(json);
+        json->content++;
+        skip_whitespace(json);
+
+        j4on_pair *j4_pair = (j4on_pair *)malloc(sizeof(j4on_pair));
+        J4ON_VALUE_INIT(j4_pair, j4_pair->j4_value, J4_PAIR);
+        J4ON_VALUE_INIT(j4_pair, j4_pair->j4_key.j4_value, J4_PAIR);
+        j4_pair->j4_key.j4_value = *key;
+        j4_pair->j4_value = *value;
+
+        // link the new node by the list, and j4_object as the object list head.
+        if (!j4_object->j4_value.j4_list.depth) {
+            j4_object->j4_value.j4_list.depth = &value->j4_list;
+            list = j4_object->j4_value.j4_list.depth;
+        } else {
+            list->breadth = &value->j4_list;
+            list = list->breadth;
+        }
     }
 
-    p++; // skip '\"'
-
-    while (*p++ != '\"') {
-        j4_key->k_len++;
-    }
-
-    j4_key->key = (char *)malloc(j4_key->k_len + 1);
-    memmove(j4_key->key, ++json->content, j4_key->k_len);
-    j4_key->key[j4_key->k_len] = '\0';
-    json->content = p;
-    return j4_key;
+    return &j4_object->j4_value;
 }
 
 static struct j4on_value *j4on_parse_value(struct json *json) {
@@ -279,6 +287,8 @@ static struct j4on_value *j4on_parse_value(struct json *json) {
         return j4on_parse_string(json);
     case '[':
         return j4on_parse_array(json);
+    case '{':
+        return j4on_parse_object(json);
     default:
         return j4on_parse_number(json);
     }
