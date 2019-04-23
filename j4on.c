@@ -39,8 +39,8 @@ void j4on_load(struct json *json, const char *filename) {
     int len = ftell(fp);
     fseek(fp, 0, SEEK_SET);
     json->content = (char *)malloc(len + 1);
-     // avoid new line's diff in CRLF and LF
-    memset(json->content, '\0', len + 1); 
+    // avoid new line's diff in CRLF and LF
+    memset(json->content, '\0', len + 1);
     fread(json->content, sizeof(char), len, fp);
     json->content[len] = '\0';
 }
@@ -57,6 +57,14 @@ static void parse_whitespace(char **str) {
     while (*p == ' ' || *p == '\r' || *p == '\n' || *p == '\t')
         p++;
     *str = p;
+}
+
+static int is_value_at_end(struct json *json) {
+    skip_whitespace(json);
+    if (*json->content == ']' || *json->content == '}' ||
+        *json->content == '\0')
+        return 1;
+    return 0;
 }
 
 static struct j4on_value *j4on_parse_literal(struct json *json,
@@ -218,6 +226,10 @@ static struct j4on_value *j4on_parse_array(struct json *json) {
     }
 
     json->content++; // ']'
+    if (!is_value_at_end(json))
+        LOG_EXPECT(*json->content == ',',
+                   "Expected character ',', actual '%c' in string '%.*s'",
+                   *json->content, 16, json->content);
 
     return &j4_array->j4_value;
 }
