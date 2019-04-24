@@ -28,8 +28,9 @@
         (j4on)->j4_value.j4_type = (type);                                     \
     } while (0)
 
-const char *value_type_stringify[8] = {"UNKNOWN", "NULL",   "FALSE", "TRUE",
-                                       "NUMBER",  "STRING", "ARRAY", "OBJECT"};
+const char *value_type_stringify[9] = {"UNKNOWN", "NULL",   "FALSE",
+                                       "TRUE",    "NUMBER", "STRING",
+                                       "ARRAY",   "OBJECT", "PAIR"};
 
 void j4on_load(struct json *json, const char *filename) {
     FILE *fp = fopen(filename, "r");
@@ -139,6 +140,8 @@ static struct j4on_value *j4on_parse_number(struct json *json) {
 
 static struct j4on_value *j4on_parse_string(struct json *json) {
     char *p = json->content;
+    LOG_EXPECT(*p == '\"', "Expected '\"', actual '%c' in string '%.*s'", *p,
+               16, p);
     p++; // skip '\"'
     while (*p != '\0') {
         if (*p == '\\') {
@@ -190,7 +193,8 @@ static struct j4on_value *j4on_parse_string(struct json *json) {
 static struct j4on_value *j4on_parse_value(struct json *json);
 
 static struct j4on_value *j4on_parse_array(struct json *json) {
-    json->content++;
+    LOG_EXPECT(*json->content++ == '[', "expected '[', %.*s", 16,
+               json->content);
 
     j4on_array *j4_array = (j4on_array *)malloc(sizeof(j4on_array));
     J4ON_VALUE_INIT(j4_array, j4_array->j4_value, J4_ARRAY);
@@ -198,7 +202,18 @@ static struct j4on_value *j4on_parse_array(struct json *json) {
     struct slist *list;
     struct j4on_value *value;
     while (*json->content != '\0') {
+        skip_whitespace(json);
+        if (*json->content == ']')
+            break;
+
         value = j4on_parse_value(json);
+
+        skip_whitespace(json);
+        if (*json->content == ',')
+            json->content++;
+        else if (*json->content == ']')
+            break;
+        json->content++;
 
         // link the new node by the list, and j4_array as the array list head.
         if (!j4_array->j4_value.j4_list.depth) {
@@ -208,35 +223,17 @@ static struct j4on_value *j4on_parse_array(struct json *json) {
             list->breadth = &value->j4_list;
             list = list->breadth;
         }
-
-        // judge whether the current value is the last value of j4_array.
-        skip_whitespace(json);
-        if (*json->content == ']') {
-            break;
-        } else if (*json->content == ',') {
-            json->content++;
-            skip_whitespace(json);
-            LOG_EXPECT(*json->content != ']' && *json->content != '\0',
-                       "Expected character ']', actual '%c' in string '%.*s'",
-                       *json->content, 16, json->content);
-        }
     }
 
-    json->content++; // ']'
-
-    // judge whether the current array is the last value of
-    // its parent object(array/object)
-    if (!is_value_at_end(json))
-        LOG_EXPECT(*json->content == ',',
-                   "Expected character ',', actual '%c' in string '%.*s'",
-                   *json->content, 16, json->content);
+    LOG_EXPECT(*json->content++ == ']', "expected ']', %.*s", 16,
+               json->content);
 
     return &j4_array->j4_value;
 }
 
 static struct j4on_value *j4on_parse_object(struct json *json) {
-    json->content++;
-    skip_whitespace(json);
+    LOG_EXPECT(*json->content++ == '{', "expected '{', %.*s", 16,
+               json->content);
 
     j4on_object *j4_object = (j4on_object *)malloc(sizeof(j4on_object));
     J4ON_VALUE_INIT(j4_object, j4_object->j4_value, J4_OBJECT);
@@ -244,16 +241,22 @@ static struct j4on_value *j4on_parse_object(struct json *json) {
     struct slist *list;
     struct j4on_value *key, *value;
     while (*json->content != '\0') {
+        skip_whitespace(json);
+        if (*json->content == '}')
+            break;
         key = j4on_parse_string(json);
-        // parse ':'
+
         skip_whitespace(json);
-        json->content++;
-        skip_whitespace(json);
+        LOG_EXPECT(*json->content++ == ':', "member expected ':', %.*s", 16,
+                   json->content);
+
         value = j4on_parse_value(json);
-        // parse ','
         skip_whitespace(json);
+        if (*json->content == ',')
+            json->content++;
+        else if (*json->content == '}')
+            break;
         json->content++;
-        skip_whitespace(json);
 
         j4on_pair *j4_pair = (j4on_pair *)malloc(sizeof(j4on_pair));
         J4ON_VALUE_INIT(j4_pair, j4_pair->j4_value, J4_PAIR);
@@ -270,6 +273,9 @@ static struct j4on_value *j4on_parse_object(struct json *json) {
             list = list->breadth;
         }
     }
+
+    LOG_EXPECT(*json->content++ == '}', "expected '}', %.*s", 16,
+               json->content);
 
     return &j4_object->j4_value;
 }
