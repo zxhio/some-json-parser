@@ -28,6 +28,27 @@
         (j4on)->j4_value.j4_type = (type);                                     \
     } while (0)
 
+#define J4ON_LINK_VALUE(list, tmp_list, value)                                 \
+    do {                                                                       \
+        if (!(list).depth) {                                                   \
+            (list).depth = &(value)->j4_list;                                  \
+            tmp_list = (list).depth;                                           \
+        } else {                                                               \
+            tmp_list->breadth = &(value)->j4_list;                             \
+            tmp_list = tmp_list->breadth;                                      \
+        }                                                                      \
+    } while (0)
+
+#define J4ON_LINK_PAIR(list, tmp_list, value)                                  \
+    do {                                                                       \
+        j4on_pair *j4_pair = (j4on_pair *)malloc(sizeof(j4on_pair));           \
+        J4ON_VALUE_INIT(j4_pair, j4_pair->j4_value, J4_PAIR);                  \
+        J4ON_VALUE_INIT(j4_pair, j4_pair->j4_key.j4_value, J4_PAIR);           \
+        j4_pair->j4_key.j4_value = *(key);                                     \
+        j4_pair->j4_value = *(value);                                          \
+        J4ON_LINK_VALUE(list, tmp_list, value);                                \
+    } while (0)
+
 const char *value_type_stringify[9] = {"UNKNOWN", "NULL",   "FALSE",
                                        "TRUE",    "NUMBER", "STRING",
                                        "ARRAY",   "OBJECT", "PAIR"};
@@ -64,10 +85,9 @@ static void parse_whitespace(char **str) {
     *str = p;
 }
 
-static int is_value_at_end(struct json *json) {
+static int next_is_end_char(struct json *json, char ch) {
     skip_whitespace(json);
-    if (*json->content == ']' || *json->content == '}' ||
-        *json->content == '\0')
+    if (*json->content == ch || *json->content == '\0')
         return 1;
     return 0;
 }
@@ -208,20 +228,20 @@ static struct j4on_value *j4on_parse_array(struct json *json) {
 
         value = j4on_parse_value(json);
 
-        skip_whitespace(json);
-        if (*json->content == ',')
-            json->content++;
-        else if (*json->content == ']')
-            break;
-        json->content++;
-
         // link the new node by the list, and j4_array as the array list head.
-        if (!j4_array->j4_value.j4_list.depth) {
-            j4_array->j4_value.j4_list.depth = &value->j4_list;
-            list = j4_array->j4_value.j4_list.depth;
+        J4ON_LINK_VALUE(j4_array->j4_value.j4_list, list, value);
+
+        skip_whitespace(json);
+        if (*json->content == ',') {
+            json->content++;
+            LOG_EXPECT(!next_is_end_char(json, ']'), "expected ',', %.*s", 16,
+                       json->content);
+        } else if (!next_is_end_char(json, ']')) {
+            LOG_EXPECT(*json->content == ',', "expected ',', %.*s", 16,
+                       json->content);
+            json->content++;
         } else {
-            list->breadth = &value->j4_list;
-            list = list->breadth;
+            break;
         }
     }
 
@@ -251,26 +271,21 @@ static struct j4on_value *j4on_parse_object(struct json *json) {
                    json->content);
 
         value = j4on_parse_value(json);
+
+        // linked the pair
+        J4ON_LINK_PAIR(j4_object->j4_value.j4_list, list, value);
+
         skip_whitespace(json);
-        if (*json->content == ',')
+        if (*json->content == ',') {
             json->content++;
-        else if (*json->content == '}')
-            break;
-        json->content++;
-
-        j4on_pair *j4_pair = (j4on_pair *)malloc(sizeof(j4on_pair));
-        J4ON_VALUE_INIT(j4_pair, j4_pair->j4_value, J4_PAIR);
-        J4ON_VALUE_INIT(j4_pair, j4_pair->j4_key.j4_value, J4_PAIR);
-        j4_pair->j4_key.j4_value = *key;
-        j4_pair->j4_value = *value;
-
-        // link the new node by the list, and j4_object as the object list head.
-        if (!j4_object->j4_value.j4_list.depth) {
-            j4_object->j4_value.j4_list.depth = &value->j4_list;
-            list = j4_object->j4_value.j4_list.depth;
+            LOG_EXPECT(!next_is_end_char(json, '}'), "expected ',', %.*s", 16,
+                       json->content);
+        } else if (!next_is_end_char(json, '}')) {
+            LOG_EXPECT(*json->content == ',', "expected ',', %.*s", 16,
+                       json->content);
+            json->content++;
         } else {
-            list->breadth = &value->j4_list;
-            list = list->breadth;
+            break;
         }
     }
 
@@ -318,6 +333,6 @@ void j4on_travel(struct slist *list) {
 
     struct j4on_value *entry = slist_entry(list, struct j4on_value, j4_list);
     printf("type: %s\n", value_type_stringify[entry->j4_type]);
-    j4on_travel(entry->j4_list.breadth);
     j4on_travel(entry->j4_list.depth);
+    j4on_travel(entry->j4_list.breadth);
 }

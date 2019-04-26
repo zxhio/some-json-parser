@@ -1,9 +1,53 @@
 {
-    "workbench.colorTheme": "Visual Studio Light",
     "files.autoGuessEncoding": true,
+    "terminal.integrated.shell.windows": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "workbench.colorTheme": "Visual Studio Light",
+    "editor.insertSpaces": false,
     "window.zoomLevel": 0,
-    "clang-format.language.javascript.fallbackStyle": "LLVM",
+    "terminal.integrated.rendererType": "dom",
+    "[cpp]": {},
+    "clang.executable": "D:\\LLVM\\bin\\clang.exe",
+    "clang.completion.enable": true,
+    "C_Cpp.clang_format_path": "D:\\LLVM\\bin\\clang-format.exe",
+    "C_Cpp.clang_format_style": "{BasedOnStyle: LLVM, IndentWidth: 4, SortIncludes: false}",
+    "explorer.confirmDelete": false,
+    "editor.tabSize": 8,
+    "git.autofetch": true,
+    "ycy.reminderViewIntervalInMinutes": 45,
     "latex-workshop.view.pdf.viewer": "tab",
+    "latex-workshop.latex.recipes": [
+        {
+            "name": "xelatex",
+            "tools": [
+                "xelatex",
+                "xelatex"
+            ]
+        },
+        {
+            "name": "xelatexb",
+            "tools": [
+                "xelatex",
+                "bibtex",
+                "xelatex",
+                "xelatex"
+            ]
+        },
+        {
+            "name": "latexmk",
+            "tools": [
+                "latexmk"
+            ]
+        },
+        {
+            "name": "pdflatex -> bibtex -> pdflatex*2",
+            "tools": [
+                "pdflatex",
+                "bibtex",
+                "pdflatex",
+                "pdflatex"
+            ]
+        }
+    ],
     "latex-workshop.latex.tools": [
         {
             "name": "xelatex",
@@ -44,52 +88,5 @@
             ]
         }
     ],
-    "latex-workshop.latex.recipes": [
-        {
-            "name": "latexmk 🔃",
-            "tools": [
-                "latexmk"
-            ]
-        },
-        {
-            "name": "pdflatex ➞ bibtex ➞ pdflatex × 2",
-            "tools": [
-                "pdflatex",
-                "bibtex",
-                "pdflatex",
-                "pdflatex"
-            ]
-        }
-    ],
-    "latex-workshop.latex.clean.fileTypes": [
-        "*.aux",
-        "*.bbl",
-        "*.blg",
-        "*.idx",
-        "*.ind",
-        "*.lof",
-        "*.lot",
-        "*.out",
-        "*.toc",
-        "*.acn",
-        "*.acr",
-        "*.alg",
-        "*.glg",
-        "*.glo",
-        "*.gls",
-        "*.ist",
-        "*.fls",
-        "*.log",
-        "*.fdb_latexmk"
-    ],
-    "git.autofetch": true,
-    "terminal.integrated.rendererType": "dom",
-    "C_Cpp.updateChannel": "Insiders",
-    "http.proxySupport": "off",
-    "[c]": {
-        "editor.defaultFormatter": "xaver.clang-format"
-    },
-    "[cpp]": {
-        "editor.defaultFormatter": "xaver.clang-format"
-    }
+    "C_Cpp.updateChannel": "Insiders"
 }
