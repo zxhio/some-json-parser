@@ -154,7 +154,8 @@ static struct j4on_value *j4on_parse_number(struct json *json) {
     // handle new json node
     j4on_number *j4_number = (j4on_number *)malloc(sizeof(j4on_number));
     J4ON_VALUE_INIT(j4_number, j4_number->j4_value, J4_NUMBER);
-
+    j4_number->number = number;
+    
     return &j4_number->j4_value;
 }
 
