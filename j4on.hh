@@ -127,6 +127,7 @@ class J4onParser {
     J4onParser(const char *filename);
 
     template <typename T> void check(T expect, T actual);
+    template <typename T> void check(bool t, T actual, const char *msg);
 
     char *beginParse() { return &(context_.get()[index_]); }
     uint32_t getTokenIndex() const { return index_; }

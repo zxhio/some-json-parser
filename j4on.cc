@@ -52,6 +52,18 @@ template <typename T> void J4onParser::check(T actual, T expect) {
     exit(-1);
 }
 
+template <typename T>
+void J4onParser::check(bool t, T actual, const char *msg) {
+    if (t)
+        return;
+
+    std::string line(beginParse() - column_, column_);
+    std::cout << "Parse Failed at " << row_ + 1 << "," << column_ - 1 << '\n'
+              << line << "\n  Expect: " << msg << ", actual: " << actual
+              << std::endl;
+    exit(-1);
+}
+
 void J4onParser::parseWhitespace() {
     char ch = getCurrToken();
     if (ch == ' ' || ch == '\r' || ch == '\n' || ch == '\t') {
@@ -72,11 +84,11 @@ Value J4onParser::parseElement() {
 void J4onParser::parseElements(Array &array) {
     Value value = parseElement();
     array.add(value);
-    if (getNextToken() == ',')
+    if (getCurrToken() == ',')
         parseElements(array);
 }
 
-// ws string sw ':' element
+// ws string ws ':' element
 std::pair<std::string_view, Value> J4onParser::parseMember() {
     parseWhitespace();
     Value key = parseString();
@@ -138,6 +150,47 @@ Value J4onParser::parseString() {
     return value;
 }
 
-Value J4onParser::parseNumber() { return parseValue(); }
+Value J4onParser::parseNumber() {
+    char *begin = beginParse();
+
+    // sign
+    if (getCurrToken() == '-')
+        getNextToken();
+
+    // integer
+    check(isdigit(getCurrToken()), getCurrToken(), "digit");
+
+    if (getCurrToken() == '0') {
+        getNextToken();
+    } else if (isdigit(getNextToken())) {
+        while (isdigit(getNextToken()))
+            ;
+    }
+
+    // fractional part
+    if (getCurrToken() == '.') {
+        getNextToken();
+        while (isdigit(getNextToken()))
+            ;
+    }
+
+    // exponent part
+    if (getCurrToken() == 'e' || getCurrToken() == 'E')
+        getNextToken();
+    if (getCurrToken() == '+' || getCurrToken() == '-')
+        getNextToken();
+
+    while (getNextToken())
+        ;
+
+    char *end = beginParse();
+    double n = std::strtod(begin, &end);
+    
+    Number number(n);
+    std::any numberValue(number);
+    // std::any numberValue(Number(n));  // ld error
+    Value value(kNumber, numberValue);
+    return value;
+}
 
 } // namespace j4on
