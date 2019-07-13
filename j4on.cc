@@ -8,6 +8,7 @@
 
 #include <cstdio>
 #include <cassert>
+#include <cmath>
 #include <iostream>
 
 namespace j4on {
@@ -31,7 +32,8 @@ J4onParser::J4onParser(const char *filename)
 }
 
 char J4onParser::getNextToken() {
-    char ch = context_[index_++];
+    char ch = getCurrToken();
+    index_++;
     column_++;
     if (ch == '\n' || ch == '\r') {
         row_++;
@@ -41,26 +43,36 @@ char J4onParser::getNextToken() {
 }
 
 // Intermediate Parse part.
-template <typename T> void J4onParser::check(T actual, T expect) {
-    if (actual == expect)
-        return;
-
-    std::string line(beginParse() - column_, column_);
-    std::cout << "Parse Failed at " << row_ + 1 << "," << column_ - 1 << '\n'
-              << line << "\n  Expect: " << expect << ", actual: " << actual
-              << std::endl;
-    exit(-1);
+template <typename T> void J4onParser::check(T expect, T actual) {
+    check(expect == actual, expect, actual, "");
 }
 
 template <typename T>
-void J4onParser::check(bool t, T actual, const char *msg) {
+void J4onParser::check(T expect, T actual, const char *msg) {
+    check(expect == actual, expect, actual, msg);
+}
+
+template <typename T>
+void J4onParser::check(bool t, T actual, const char *expect) {
     if (t)
         return;
 
     std::string line(beginParse() - column_, column_);
     std::cout << "Parse Failed at " << row_ + 1 << "," << column_ - 1 << '\n'
-              << line << "\n  Expect: " << msg << ", actual: " << actual
+              << line << "\n Expect:" << expect << ", actual: " << actual
               << std::endl;
+    exit(-1);
+}
+
+template <typename T>
+void J4onParser::check(bool t, T expect, T actual, const char *msg) {
+    if (t)
+        return;
+
+    std::string line(beginParse() - column_, column_);
+    std::cout << "Parse Failed at " << row_ + 1 << "," << column_ - 1 << '\n'
+              << line << "\n [" << msg << "] Expect:" << expect
+              << ", actual: " << actual << std::endl;
     exit(-1);
 }
 
@@ -77,6 +89,8 @@ Value J4onParser::parseElement() {
     parseWhitespace();
     Value value = parseValue();
     parseWhitespace();
+
+    check(getTokenIndex(), getJsonLength(), "JSON length"); // must be end
     return value;
 }
 
@@ -158,20 +172,19 @@ Value J4onParser::parseNumber() {
         getNextToken();
 
     // integer
-    check(isdigit(getCurrToken()), getCurrToken(), "digit");
-
-    if (getCurrToken() == '0') {
+    check(isdigit(getCurrToken()), getCurrToken(), "Digit"); // 0 - 9
+    if (getCurrToken() == '0') {                             // 0
         getNextToken();
-    } else if (isdigit(getNextToken())) {
-        while (isdigit(getNextToken()))
-            ;
+    } else { // 1- 9
+        while (isdigit(getCurrToken()))
+            getNextToken();
     }
 
     // fractional part
     if (getCurrToken() == '.') {
-        getNextToken();
-        while (isdigit(getNextToken()))
-            ;
+        do {
+            getNextToken();
+        } while (isdigit(getCurrToken()));
     }
 
     // exponent part
@@ -179,13 +192,16 @@ Value J4onParser::parseNumber() {
         getNextToken();
     if (getCurrToken() == '+' || getCurrToken() == '-')
         getNextToken();
+    while (isdigit(getCurrToken()))
+        getNextToken();
 
-    while (getNextToken())
-        ;
-
+    // convert string to number.
     char *end = beginParse();
     double n = std::strtod(begin, &end);
-    
+
+    check(errno != ERANGE && (n != HUGE_VAL && n != -HUGE_VAL), n,
+          "Legal number");
+
     Number number(n);
     std::any numberValue(number);
     // std::any numberValue(Number(n));  // ld error

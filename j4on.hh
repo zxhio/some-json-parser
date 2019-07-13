@@ -127,10 +127,14 @@ class J4onParser {
     J4onParser(const char *filename);
 
     template <typename T> void check(T expect, T actual);
-    template <typename T> void check(bool t, T actual, const char *msg);
+    template <typename T> void check(T expect, T actual, const char *msg);
+    template <typename T>
+    void check(bool t, T expect, T actual, const char *msg);
+    template <typename T> void check(bool t, T actual, const char *expect);
 
     char *beginParse() { return &(context_.get()[index_]); }
     uint32_t getTokenIndex() const { return index_; }
+    uint32_t getJsonLength() const { return length_; }
     char getCurrToken() const { return context_.get()[index_]; }
     char getNextToken();
 
