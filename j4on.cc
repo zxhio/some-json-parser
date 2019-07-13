@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cassert>
 #include <cmath>
+#include <cstring>
 #include <iostream>
 
 namespace j4on {
@@ -48,8 +49,8 @@ void J4onParser::check(bool t, T actual, const char *expect) {
 
     std::string line(beginParse() - column_, column_);
     std::cout << "Parse Failed at " << row_ + 1 << "," << column_ - 1 << '\n'
-              << line << "\n Expect:" << expect << ", actual: " << actual
-              << std::endl;
+              << line << "\n Expect:\"" << expect << "\", actual: \"" << actual
+              << "\"\n";
     exit(-1);
 }
 
@@ -60,8 +61,8 @@ void J4onParser::check(bool t, T expect, T actual, const char *msg) {
 
     std::string line(beginParse() - column_, column_);
     std::cout << "Parse Failed at " << row_ + 1 << "," << column_ - 1 << '\n'
-              << line << "\n [" << msg << "] Expect:" << expect
-              << ", actual: " << actual << std::endl;
+              << line << "\n [" << msg << "] Expect:\"" << expect
+              << "\", actual: \"" << actual << "\"\n";
     exit(-1);
 }
 
@@ -70,7 +71,7 @@ char J4onParser::getNextToken() {
     char ch = getCurrToken();
     index_++;
     column_++;
-    if (ch == '\n' || ch == '\r') {
+    if (ch == '\n') {
         row_++;
         column_ = 0;
     }
@@ -88,6 +89,7 @@ void J4onParser::parseWhitespace() {
 // Parse element.
 void J4onParser::parse() {
     rootValue_ = std::make_unique<Value>(parseElement());
+    check(getTokenIndex(), getJsonLength(), "Parse End"); // must be end
 }
 
 // ws value ws
@@ -96,7 +98,6 @@ Value J4onParser::parseElement() {
     Value value = parseValue();
     parseWhitespace();
 
-    check(getTokenIndex(), getJsonLength(), "Parse End"); // must be end
     return value;
 }
 
@@ -104,8 +105,10 @@ Value J4onParser::parseElement() {
 void J4onParser::parseElements(Array &array) {
     Value value = parseElement();
     array.add(value);
-    if (getCurrToken() == ',')
+    if (getCurrToken() == ',') {
+        getNextToken();
         parseElements(array);
+    }
 }
 
 // ws string ws ':' element
@@ -129,8 +132,10 @@ std::pair<std::string_view, Value> J4onParser::parseMember() {
 void J4onParser::parseMembers(Object &obj) {
     std::pair<std::string_view, Value> member = parseMember();
     obj.add(member);
-    if (getNextToken() == ',')
+    if (getCurrToken() == ',') {
+        getNextToken();
         parseMembers(obj);
+    }
 }
 
 Value J4onParser::parseValue() {
@@ -144,6 +149,10 @@ Value J4onParser::parseValue() {
         return parseLiteral("true", kTrue, 4);
     case '\"':
         return parseString();
+    case '[':
+        return parseArray();
+    case '{':
+        return praseObject();
     default:
         return parseNumber();
     }
@@ -251,6 +260,42 @@ Value J4onParser::parseString() {
     String strValue(str);
     std::any v(strValue);
     Value value(kString, v);
+    return value;
+}
+
+// '[' ws | elements ']'
+Value J4onParser::parseArray() {
+    check(getNextToken(), '[', "Parsing array begin");
+
+    Array array;
+
+    // parse ws or elements
+    parseWhitespace();
+    if (getCurrToken() != ']')
+        parseElements(array);
+
+    check(getNextToken(), ']', "Parsing array end");
+
+    std::any v(array);
+    Value value(kArray, v);
+    return value;
+}
+
+// '{ ws | members '}'
+Value J4onParser::praseObject() {
+    check(getNextToken(), '{', "Parsing object begin");
+
+    Object obj;
+
+    // parse ws or members
+    parseWhitespace();
+    if (getCurrToken() != '}')
+        parseMembers(obj);
+
+    check(getNextToken(), '}', "Parsing object end");
+
+    std::any v(obj);
+    Value value(kObject, v);
     return value;
 }
 

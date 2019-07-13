@@ -66,7 +66,7 @@ class String {
     std::string_view getString() { return str_; }
 
   private:
-    std::string str_;
+    std::string str_; // should be std::string not std::string_view
 };
 
 class Array {
@@ -74,6 +74,7 @@ class Array {
     Array() {}
     Value getValueByIndex(size_t index) const { return values_[index]; }
     void add(Value v) { values_.push_back(v); }
+    size_t size() const { return values_.size(); }
 
   private:
     std::vector<Value> values_;
@@ -88,6 +89,7 @@ class Object {
     void add(std::pair<std::string_view, Value> member) {
         members_.emplace(member);
     }
+    size_t size() const { return members_.size(); }
 
   private:
     // <key, value>
@@ -149,8 +151,8 @@ class J4onParser {
     Value parseLiteral(const char *literal, ValueType type, size_t n);
     Value parseNumber();
     Value parseString();
-    // Value *parseArray();
-    // Value *praseObject();
+    Value parseArray();
+    Value praseObject();
 
     // Intermediate Parse part.
     // Some parts will be deleted later.

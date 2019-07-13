@@ -39,10 +39,34 @@ void test_string() {
               << "string: " << str.getString() << std::endl;
 }
 
+void test_array() {
+    j4on::J4onParser parser("./test/json/array.json");
+    parser.parse();
+
+    j4on::Value v = parser.getRootValue();
+    j4on::Array arr = std::any_cast<j4on::Array>(v.getAnyValue());
+
+    std::cout << "type: " << j4on::typeToString(v.type()) << ", "
+              << "array size: " << arr.size() << std::endl;
+}
+
+void test_object() {
+    j4on::J4onParser parser("./test/json/object.json");
+    parser.parse();
+
+    j4on::Value v = parser.getRootValue();
+    j4on::Object obj = std::any_cast<j4on::Object>(v.getAnyValue());
+
+    std::cout << "type: " << j4on::typeToString(v.type()) << ", "
+              << "object size: " << obj.size() << std::endl;
+}
+
 int main() {
     test_null();
     test_true();
     test_false();
     test_number();
     test_string();
+    test_array();
+    test_object();
 }
