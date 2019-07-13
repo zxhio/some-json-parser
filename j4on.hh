@@ -62,11 +62,11 @@ class Number {
 
 class String {
   public:
-    String(const char *str, size_t n) : str_(str, n) {}
+    String(std::string str) : str_(str) {}
     std::string_view getString() { return str_; }
 
   private:
-    std::string_view str_;
+    std::string str_;
 };
 
 class Array {

@@ -31,17 +31,6 @@ J4onParser::J4onParser(const char *filename)
     fclose(fp);
 }
 
-char J4onParser::getNextToken() {
-    char ch = getCurrToken();
-    index_++;
-    column_++;
-    if (ch == '\n' || ch == '\r') {
-        row_++;
-        column_ = 0;
-    }
-    return ch;
-}
-
 // Intermediate Parse part.
 template <typename T> void J4onParser::check(T expect, T actual) {
     check(expect == actual, expect, actual, "");
@@ -76,6 +65,18 @@ void J4onParser::check(bool t, T expect, T actual, const char *msg) {
     exit(-1);
 }
 
+char J4onParser::getNextToken() {
+    check(getTokenIndex() <= getJsonLength(), getTokenIndex(), "Parse end");
+    char ch = getCurrToken();
+    index_++;
+    column_++;
+    if (ch == '\n' || ch == '\r') {
+        row_++;
+        column_ = 0;
+    }
+    return ch;
+}
+
 void J4onParser::parseWhitespace() {
     char ch = getCurrToken();
     if (ch == ' ' || ch == '\r' || ch == '\n' || ch == '\t') {
@@ -84,13 +85,18 @@ void J4onParser::parseWhitespace() {
     }
 }
 
+// Parse element.
+void J4onParser::parse() {
+    rootValue_ = std::make_unique<Value>(parseElement());
+}
+
 // ws value ws
 Value J4onParser::parseElement() {
     parseWhitespace();
     Value value = parseValue();
     parseWhitespace();
 
-    check(getTokenIndex(), getJsonLength(), "JSON length"); // must be end
+    check(getTokenIndex(), getJsonLength(), "Parse End"); // must be end
     return value;
 }
 
@@ -127,11 +133,6 @@ void J4onParser::parseMembers(Object &obj) {
         parseMembers(obj);
 }
 
-// Parse element.
-void J4onParser::parse() {
-    rootValue_ = std::make_unique<Value>(parseElement());
-}
-
 Value J4onParser::parseValue() {
     char ch = getCurrToken();
     switch (ch) {
@@ -141,6 +142,8 @@ Value J4onParser::parseValue() {
         return parseLiteral("false", kFalse, 5);
     case 't':
         return parseLiteral("true", kTrue, 4);
+    case '\"':
+        return parseString();
     default:
         return parseNumber();
     }
@@ -153,14 +156,6 @@ Value J4onParser::parseLiteral(const char *literal, ValueType type, size_t n) {
 
     std::any literalValue(Literal(literal, n));
     Value value(type, literalValue);
-    return value;
-}
-
-Value J4onParser::parseString() {
-    /* test*/
-    String strValue("test", 4);
-    std::any v(strValue);
-    Value value(kString, v);
     return value;
 }
 
@@ -206,6 +201,56 @@ Value J4onParser::parseNumber() {
     std::any numberValue(number);
     // std::any numberValue(Number(n));  // ld error
     Value value(kNumber, numberValue);
+    return value;
+}
+
+Value J4onParser::parseString() {
+    std::string str;
+
+    check(getNextToken(), '\"', "Parsing string begin");
+    do {
+        if (getCurrToken() == '\\') {
+            switch (getNextToken()) {
+            case '\"':
+                str += '\"';
+                break;
+            case '\\':
+                str += '\\';
+                break;
+            case '/':
+                str += '/';
+                break;
+            case 'b':
+                str += '\b';
+                break;
+            case 'f':
+                str += '\f';
+                break;
+            case 'n':
+                str += '\n';
+                break;
+            case 'r':
+                str += '\r';
+                break;
+            case 't':
+                str += '\t';
+                break;
+            default:
+                // FIME: 4 hex digits.
+                check(true, getCurrToken(), "Legal escape character");
+            }
+        } else if (getCurrToken() == '\"') {
+            break;
+        } else {
+            str += getCurrToken();
+        }
+    } while (getNextToken());
+
+    check(getNextToken(), '\"', "Parsing string end");
+
+    String strValue(str);
+    std::any v(strValue);
+    Value value(kString, v);
     return value;
 }
 

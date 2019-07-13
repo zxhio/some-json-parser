@@ -28,9 +28,21 @@ void test_number() {
               << "number: " << number.getNumber() << std::endl;
 }
 
+void test_string() {
+    j4on::J4onParser parser("./test/json/string.json");
+    parser.parse();
+
+    j4on::Value v = parser.getRootValue();
+    j4on::String str = std::any_cast<j4on::String>(v.getAnyValue());
+
+    std::cout << "type: " << j4on::typeToString(v.type()) << ", "
+              << "string: " << str.getString() << std::endl;
+}
+
 int main() {
     test_null();
     test_true();
     test_false();
     test_number();
+    test_string();
 }
