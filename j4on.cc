@@ -299,4 +299,65 @@ Value J4onParser::praseObject() {
     return value;
 }
 
+void J4onParser::traverse() const {
+
+    Value value = getRootValue();
+    traverseValue(value);
+}
+
+void J4onParser::traverseValue(Value &value) const {
+    switch (value.type()) {
+    case kNull:
+    case kFalse:
+    case kTrue:
+        return traverseLiteral(value);
+    case kNumber:
+        return traverseNumber(value);
+    case kString:
+        return traverseString(value);
+    case kArray:
+        return traverseArray(value);
+    case kObject:
+        return traverseObject(value);
+    }
+}
+
+void J4onParser::traverseLiteral(Value &value) const {
+    Literal lit = std::any_cast<Literal>(value.getAnyValue());
+    std::cout << lit.getLiteral() << std::endl;
+}
+
+void J4onParser::traverseNumber(Value &value) const {
+    Number number = std::any_cast<Number>(value.getAnyValue());
+    std::cout << number.getNumber() << std::endl;
+}
+
+void J4onParser::traverseString(Value &value) const {
+    j4on::String str = std::any_cast<j4on::String>(value.getAnyValue());
+    std::cout << str.getString() << std::endl;
+}
+
+void J4onParser::traverseArray(Value &value) const {
+    j4on::Array arr = std::any_cast<j4on::Array>(value.getAnyValue());
+    Value v;
+    for (size_t i = 0; i < arr.size(); i++) {
+        v = arr.getValueByIndex(i);
+        traverseValue(v);
+    }
+}
+
+void J4onParser::traverseObject(Value &value) const {
+    j4on::Object obj = std::any_cast<j4on::Object>(value.getAnyValue());
+
+    // FIXME, traverse Member.
+    Value v;
+    std::pair<std::string_view, Value> member;
+    for (std::map<std::string_view, Value>::iterator it = obj.beginMember();
+         it != obj.endMember(); ++it) {
+        member = *it;
+        v = member.second;
+        traverseValue(v);
+    }
+}
+
 } // namespace j4on

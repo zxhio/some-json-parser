@@ -28,7 +28,7 @@ enum ValueType {
 
 const char *typeToString(ValueType type);
 
-// general Value structure
+// General Value structure
 class Value {
   public:
     Value() : type_(kUnknown) {}
@@ -42,6 +42,7 @@ class Value {
     std::any value_;
 };
 
+// Value.
 class Literal {
   public:
     explicit Literal(const char *liteal, size_t n) : literal_(liteal, n) {}
@@ -86,6 +87,14 @@ class Object {
     Object(std::pair<std::string_view, Value> member) : members_{member} {};
     Value getValueByKey(std::string_view key) { return members_[key]; }
 
+    std::map<std::string_view, Value>::iterator beginMember() {
+        return members_.begin();
+    }
+
+    std::map<std::string_view, Value>::iterator endMember() {
+        return members_.end();
+    }
+
     void add(std::pair<std::string_view, Value> member) {
         members_.emplace(member);
     }
@@ -128,20 +137,28 @@ class J4onParser {
   public:
     J4onParser(const char *filename);
 
+    // Start parse JSON.
+    void parse();
+
+    // Firse Value
+    Value getRootValue() const { return *rootValue_.get(); }
+
+    // Traverse j4on parser tree.
+    void traverse() const;
+
+    // Debug.
     template <typename T> void check(T expect, T actual);
     template <typename T> void check(T expect, T actual, const char *msg);
     template <typename T>
     void check(bool t, T expect, T actual, const char *msg);
     template <typename T> void check(bool t, T actual, const char *expect);
 
+  private:
     char *beginParse() { return &(context_.get()[index_]); }
     uint32_t getTokenIndex() const { return index_; }
     uint32_t getJsonLength() const { return length_; }
     char getCurrToken() const { return context_.get()[index_]; }
     char getNextToken();
-
-    // Start parse JSON.
-    void parse();
 
     // Parse Value
     // @return is value. if it's not root value, we need take it to array or
@@ -162,9 +179,14 @@ class J4onParser {
     std::pair<std::string_view, Value> parseMember();
     void parseMembers(Object &obj);
 
-    Value getRootValue() const { return *rootValue_.get(); }
+    // Intermediate traversing.
+    void traverseValue(Value &value) const;
+    void traverseLiteral(Value &value) const;
+    void traverseNumber(Value &value) const;
+    void traverseString(Value &value) const;
+    void traverseArray(Value &value) const;
+    void traverseObject(Value &value) const;
 
-  private:
     uint32_t index_;
     uint32_t row_;
     uint32_t column_;

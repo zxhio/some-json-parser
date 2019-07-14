@@ -59,6 +59,8 @@ void test_object() {
 
     std::cout << "type: " << j4on::typeToString(v.type()) << ", "
               << "object size: " << obj.size() << std::endl;
+
+    parser.traverse();
 }
 
 int main() {
