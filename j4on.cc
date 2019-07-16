@@ -19,6 +19,11 @@ static const char *typesname[8] = {"null",   "false", "true",   "number",
 
 const char *typeToString(ValueType type) { return typesname[type]; }
 
+static void printWhitespace(uint32_t n) {
+    for (uint32_t i = 0; i < n; ++i)
+        std::cout << '\t';
+}
+
 J4onParser::J4onParser(const char *filename)
     : index_(0), row_(0), column_(0), length_(0) {
 
@@ -112,7 +117,7 @@ void J4onParser::parseElements(Array &array) {
 }
 
 // ws string ws ':' element
-std::pair<std::string_view, Value> J4onParser::parseMember() {
+std::pair<std::string, Value> J4onParser::parseMember() {
     parseWhitespace();
     Value key = parseString();
     parseWhitespace();
@@ -122,15 +127,15 @@ std::pair<std::string_view, Value> J4onParser::parseMember() {
     Value value = parseElement();
 
     String keyValue = std::any_cast<String>(key.getAnyValue());
-    std::string_view keystr = keyValue.getString();
-    std::pair<std::string_view, Value> member = std::make_pair(keystr, value);
+    std::string keystr = keyValue.getString();
+    std::pair<std::string, Value> member = std::make_pair(keystr, value);
 
     return member;
 }
 
 // member ',' members
 void J4onParser::parseMembers(Object &obj) {
-    std::pair<std::string_view, Value> member = parseMember();
+    std::pair<std::string, Value> member = parseMember();
     obj.add(member);
     if (getCurrToken() == ',') {
         getNextToken();
@@ -163,8 +168,7 @@ Value J4onParser::parseLiteral(const char *literal, ValueType type, size_t n) {
     for (size_t i = 0; i < n; ++i)
         check(getNextToken(), p[i]);
 
-    std::any literalValue(Literal(literal, n));
-    Value value(type, literalValue);
+    Value value(type, Literal(literal, n));
     return value;
 }
 
@@ -206,10 +210,7 @@ Value J4onParser::parseNumber() {
     check(errno != ERANGE && (n != HUGE_VAL && n != -HUGE_VAL), n,
           "Legal number");
 
-    Number number(n);
-    std::any numberValue(number);
-    // std::any numberValue(Number(n));  // ld error
-    Value value(kNumber, numberValue);
+    Value value(kNumber, Number(n));
     return value;
 }
 
@@ -257,9 +258,7 @@ Value J4onParser::parseString() {
 
     check(getNextToken(), '\"', "Parsing string end");
 
-    String strValue(str);
-    std::any v(strValue);
-    Value value(kString, v);
+    Value value(kString, String(str));
     return value;
 }
 
@@ -276,8 +275,7 @@ Value J4onParser::parseArray() {
 
     check(getNextToken(), ']', "Parsing array end");
 
-    std::any v(array);
-    Value value(kArray, v);
+    Value value(kArray, array);
     return value;
 }
 
@@ -294,70 +292,100 @@ Value J4onParser::praseObject() {
 
     check(getNextToken(), '}', "Parsing object end");
 
-    std::any v(obj);
-    Value value(kObject, v);
+    Value value(kObject, obj);
     return value;
 }
 
 void J4onParser::traverse() const {
-
     Value value = getRootValue();
-    traverseValue(value);
+    traverseValue(value, 0);
+    std::cout << '\n';
 }
 
-void J4onParser::traverseValue(Value &value) const {
+void J4onParser::traverseValue(Value &value, uint32_t depth) const {
     switch (value.type()) {
     case kNull:
     case kFalse:
     case kTrue:
-        return traverseLiteral(value);
+        return traverseLiteral(value, depth);
     case kNumber:
-        return traverseNumber(value);
+        return traverseNumber(value, depth);
     case kString:
-        return traverseString(value);
+        return traverseString(value, depth);
     case kArray:
-        return traverseArray(value);
+        return traverseArray(value, depth);
     case kObject:
-        return traverseObject(value);
+        return traverseObject(value, depth);
+    case kUnknown:
+        /* do nothing */;
     }
 }
 
-void J4onParser::traverseLiteral(Value &value) const {
+void J4onParser::traverseLiteral(Value &value, uint32_t depth) const {
     Literal lit = std::any_cast<Literal>(value.getAnyValue());
-    std::cout << lit.getLiteral() << std::endl;
+    std::cout << lit.getLiteral();
 }
 
-void J4onParser::traverseNumber(Value &value) const {
+void J4onParser::traverseNumber(Value &value, uint32_t depth) const {
     Number number = std::any_cast<Number>(value.getAnyValue());
-    std::cout << number.getNumber() << std::endl;
+    std::cout << number.getNumber();
 }
 
-void J4onParser::traverseString(Value &value) const {
+void J4onParser::traverseString(Value &value, uint32_t depth) const {
     j4on::String str = std::any_cast<j4on::String>(value.getAnyValue());
-    std::cout << str.getString() << std::endl;
+    std::cout << '\"' << str.getString() << '\"';
 }
 
-void J4onParser::traverseArray(Value &value) const {
+void J4onParser::traverseArray(Value &value, uint32_t depth) const {
     j4on::Array arr = std::any_cast<j4on::Array>(value.getAnyValue());
+
+    std::cout << "[\n";
+
     Value v;
-    for (size_t i = 0; i < arr.size(); i++) {
+    for (size_t i = 0; i < arr.size(); ++i) {
         v = arr.getValueByIndex(i);
-        traverseValue(v);
+        printWhitespace(depth + 1);
+
+        traverseValue(v, depth + 1);
+
+        if (i != arr.size() - 1) // last element.
+            std::cout << ",\n";
+        else
+            std::cout << '\n';
     }
+
+    printWhitespace(depth);
+    std::cout << "]";
 }
 
-void J4onParser::traverseObject(Value &value) const {
+void J4onParser::traverseObject(Value &value, uint32_t depth) const {
     j4on::Object obj = std::any_cast<j4on::Object>(value.getAnyValue());
+
+    std::cout << "{\n";
 
     // FIXME, traverse Member.
     Value v;
-    std::pair<std::string_view, Value> member;
-    for (std::map<std::string_view, Value>::iterator it = obj.beginMember();
+    std::pair<std::string, Value> member;
+    int i = 1;
+    for (std::unordered_map<std::string, Value>::iterator it =
+             obj.beginMember();
          it != obj.endMember(); ++it) {
-        member = *it;
-        v = member.second;
-        traverseValue(v);
+        // print key
+        printWhitespace(depth + 1);
+        std::cout << '\"' << (*it).first << "\": ";
+
+        // value.
+        traverseValue((*it).second, depth + 1);
+
+        // last element.
+        if (i++ != obj.size())
+            std::cout << ",\n";
+        else
+            std::cout << '\n';
     }
+
+    printWhitespace(depth);
+    std::cout << "}";
 }
 
 } // namespace j4on

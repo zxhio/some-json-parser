@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 #include <any>
-#include <map>
+#include <unordered_map>
 #include <memory>
 
 namespace j4on {
@@ -64,7 +64,7 @@ class Number {
 class String {
   public:
     String(std::string str) : str_(str) {}
-    std::string_view getString() { return str_; }
+    std::string getString() const { return str_; }
 
   private:
     std::string str_; // should be std::string not std::string_view
@@ -84,25 +84,23 @@ class Array {
 class Object {
   public:
     Object(){};
-    Object(std::pair<std::string_view, Value> member) : members_{member} {};
-    Value getValueByKey(std::string_view key) { return members_[key]; }
+    Object(std::pair<std::string, Value> member) : members_{member} {};
+    Value getValueByKey(std::string &key) { return members_[key]; }
 
-    std::map<std::string_view, Value>::iterator beginMember() {
+    std::unordered_map<std::string, Value>::iterator beginMember() {
         return members_.begin();
     }
 
-    std::map<std::string_view, Value>::iterator endMember() {
+    std::unordered_map<std::string, Value>::iterator endMember() {
         return members_.end();
     }
 
-    void add(std::pair<std::string_view, Value> member) {
-        members_.emplace(member);
-    }
+    void add(std::pair<std::string, Value> member) { members_.emplace(member); }
     size_t size() const { return members_.size(); }
 
   private:
     // <key, value>
-    std::map<std::string_view, Value> members_;
+    std::unordered_map<std::string, Value> members_;
 };
 
 // JSON
@@ -176,16 +174,17 @@ class J4onParser {
     void parseWhitespace();
     Value parseElement();
     void parseElements(Array &array);
-    std::pair<std::string_view, Value> parseMember();
+    std::pair<std::string, Value> parseMember();
     void parseMembers(Object &obj);
 
     // Intermediate traversing.
-    void traverseValue(Value &value) const;
-    void traverseLiteral(Value &value) const;
-    void traverseNumber(Value &value) const;
-    void traverseString(Value &value) const;
-    void traverseArray(Value &value) const;
-    void traverseObject(Value &value) const;
+    // @return value depth.
+    void traverseValue(Value &value, uint32_t depth) const;
+    void traverseLiteral(Value &value, uint32_t depth) const;
+    void traverseNumber(Value &value, uint32_t depth) const;
+    void traverseString(Value &value, uint32_t depth) const;
+    void traverseArray(Value &value, uint32_t depth) const;
+    void traverseObject(Value &value, uint32_t depth) const;
 
     uint32_t index_;
     uint32_t row_;

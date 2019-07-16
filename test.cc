@@ -9,8 +9,9 @@ void test_literal(const char *file) {
     j4on::Value v = parser.getRootValue();
     j4on::Literal lit = std::any_cast<j4on::Literal>(v.getAnyValue());
 
-    std::cout << "type: " << j4on::typeToString(v.type()) << ", "
-              << "literal: " << lit.getLiteral() << std::endl;
+    std::cout << "\nParse " << file << '\n';
+
+    parser.traverse();
 }
 
 void test_null() { test_literal("./test/json/null.json"); }
@@ -23,9 +24,10 @@ void test_number() {
 
     j4on::Value v = parser.getRootValue();
     j4on::Number number = std::any_cast<j4on::Number>(v.getAnyValue());
+ 
+    std::cout << "\nParse ./test/json/number.json\n";
 
-    std::cout << "type: " << j4on::typeToString(v.type()) << ", "
-              << "number: " << number.getNumber() << std::endl;
+    parser.traverse();
 }
 
 void test_string() {
@@ -35,8 +37,9 @@ void test_string() {
     j4on::Value v = parser.getRootValue();
     j4on::String str = std::any_cast<j4on::String>(v.getAnyValue());
 
-    std::cout << "type: " << j4on::typeToString(v.type()) << ", "
-              << "string: " << str.getString() << std::endl;
+    std::cout << "\nParse ./test/json/string.json\n";
+
+    parser.traverse();
 }
 
 void test_array() {
@@ -46,8 +49,9 @@ void test_array() {
     j4on::Value v = parser.getRootValue();
     j4on::Array arr = std::any_cast<j4on::Array>(v.getAnyValue());
 
-    std::cout << "type: " << j4on::typeToString(v.type()) << ", "
-              << "array size: " << arr.size() << std::endl;
+    std::cout << "\nParse ./test/json/array.json\n";
+
+    parser.traverse();
 }
 
 void test_object() {
@@ -57,8 +61,7 @@ void test_object() {
     j4on::Value v = parser.getRootValue();
     j4on::Object obj = std::any_cast<j4on::Object>(v.getAnyValue());
 
-    std::cout << "type: " << j4on::typeToString(v.type()) << ", "
-              << "object size: " << obj.size() << std::endl;
+    std::cout << "\nParse test/json/object.json\n";
 
     parser.traverse();
 }
