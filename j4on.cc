@@ -6,11 +6,11 @@
 
 #include "j4on.hh"
 
-#include <cstdio>
 #include <cassert>
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <fstream>
 
 namespace j4on {
 
@@ -24,17 +24,11 @@ static void printWhitespace(uint32_t n) {
         std::cout << '\t';
 }
 
-J4onParser::J4onParser(const char *filename)
-    : index_(0), row_(0), column_(0), length_(0) {
-
-    FILE *fp = fopen(filename, "r");
-    fseek(fp, 0, SEEK_END);
-    length_ = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    context_ = std::make_unique<char[]>(length_ + 1);
-    fread(context_.get(), sizeof(char), length_, fp);
-    context_.get()[length_] = '\0';
-    fclose(fp);
+J4onParser::J4onParser(const char *filename) : index_(0), row_(0), column_(0) {
+    std::ifstream input(filename, std::ios::binary);
+    std::vector<char> filedata((std::istreambuf_iterator<char>(input)),
+                               std::istreambuf_iterator<char>());
+    context_ = filedata;
 }
 
 // Intermediate Parse part.
@@ -339,11 +333,13 @@ void J4onParser::traverseString(Value &value, uint32_t depth) const {
 void J4onParser::traverseArray(Value &value, uint32_t depth) const {
     j4on::Array arr = std::any_cast<j4on::Array>(value.getAnyValue());
 
-    std::cout << "[\n";
+    std::cout << "[";
+    if (arr.size() > 0)
+        std::cout << '\n';
 
     Value v;
     for (size_t i = 0; i < arr.size(); ++i) {
-        v = arr.getValueByIndex(i);
+        v = arr[i];
         printWhitespace(depth + 1);
 
         traverseValue(v, depth + 1);
@@ -354,37 +350,39 @@ void J4onParser::traverseArray(Value &value, uint32_t depth) const {
             std::cout << '\n';
     }
 
-    printWhitespace(depth);
+    if (arr.size() > 0)
+        printWhitespace(depth);
     std::cout << "]";
 }
 
 void J4onParser::traverseObject(Value &value, uint32_t depth) const {
     j4on::Object obj = std::any_cast<j4on::Object>(value.getAnyValue());
 
-    std::cout << "{\n";
+    std::cout << "{";
+    if (obj.size() > 0)
+        std::cout << '\n';
 
-    // FIXME, traverse Member.
     Value v;
     std::pair<std::string, Value> member;
-    int i = 1;
-    for (std::unordered_map<std::string, Value>::iterator it =
-             obj.beginMember();
-         it != obj.endMember(); ++it) {
+    for (size_t i = 0; i < obj.size(); ++i) {
+        member = obj[i];
+
         // print key
         printWhitespace(depth + 1);
-        std::cout << '\"' << (*it).first << "\": ";
+        std::cout << '\"' << member.first << "\": ";
 
         // value.
-        traverseValue((*it).second, depth + 1);
+        traverseValue(member.second, depth + 1);
 
         // last element.
-        if (i++ != obj.size())
+        if (i != obj.size() - 1)
             std::cout << ",\n";
         else
             std::cout << '\n';
     }
 
-    printWhitespace(depth);
+    if (obj.size() > 0)
+        printWhitespace(depth);
     std::cout << "}";
 }
 

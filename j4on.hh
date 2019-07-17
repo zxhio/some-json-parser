@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 #include <any>
-#include <unordered_map>
 #include <memory>
 
 namespace j4on {
@@ -73,7 +72,7 @@ class String {
 class Array {
   public:
     Array() {}
-    Value getValueByIndex(size_t index) const { return values_[index]; }
+    Value operator[](size_t index) const {return values_[index]; }
     void add(Value v) { values_.push_back(v); }
     size_t size() const { return values_.size(); }
 
@@ -85,22 +84,28 @@ class Object {
   public:
     Object(){};
     Object(std::pair<std::string, Value> member) : members_{member} {};
-    Value getValueByKey(std::string &key) { return members_[key]; }
 
-    std::unordered_map<std::string, Value>::iterator beginMember() {
-        return members_.begin();
+    std::pair<std::string, Value> operator[](size_t index) const {
+        return members_[index];
     }
 
-    std::unordered_map<std::string, Value>::iterator endMember() {
-        return members_.end();
+    // O(n)
+    Value operator[](std::string &key) const {
+        for (auto member : members_)
+            if (key == member.first)
+                return member.second;
     }
 
-    void add(std::pair<std::string, Value> member) { members_.emplace(member); }
+    void add(std::pair<std::string, Value> member) {
+        members_.push_back(member);
+    }
+
     size_t size() const { return members_.size(); }
 
   private:
-    // <key, value>
-    std::unordered_map<std::string, Value> members_;
+    // <key, value>, use std::vector keep json order.
+    // std::unordered_map<std::string, Value> members_;
+    std::vector<std::pair<std::string, Value>> members_;
 };
 
 // JSON
@@ -152,10 +157,10 @@ class J4onParser {
     template <typename T> void check(bool t, T actual, const char *expect);
 
   private:
-    char *beginParse() { return &(context_.get()[index_]); }
+    char *beginParse() { return &context_[index_]; }
     uint32_t getTokenIndex() const { return index_; }
-    uint32_t getJsonLength() const { return length_; }
-    char getCurrToken() const { return context_.get()[index_]; }
+    uint32_t getJsonLength() const { return context_.size(); }
+    char getCurrToken() const { return context_[index_]; }
     char getNextToken();
 
     // Parse Value
@@ -189,8 +194,7 @@ class J4onParser {
     uint32_t index_;
     uint32_t row_;
     uint32_t column_;
-    uint32_t length_;
-    std::unique_ptr<char[]> context_;
+    std::vector<char> context_;
     std::unique_ptr<Value> rootValue_;
 };
 
