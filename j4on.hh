@@ -62,7 +62,8 @@ class Number {
 
 class String {
   public:
-    String(std::string str) : str_(str) {}
+    explicit String(std::string str) : str_(str) {}
+    String(const char *str, size_t n) : str_(str, n) {}
     std::string getString() const { return str_; }
 
   private:
@@ -72,7 +73,7 @@ class String {
 class Array {
   public:
     Array() {}
-    Value operator[](size_t index) const {return values_[index]; }
+    Value operator[](size_t index) const { return values_[index]; }
     void add(Value v) { values_.push_back(v); }
     size_t size() const { return values_.size(); }
 
@@ -150,10 +151,10 @@ class J4onParser {
     void traverse() const;
 
     // Debug.
-    template <typename T> void check(T expect, T actual);
-    template <typename T> void check(T expect, T actual, const char *msg);
+    template <typename T> void check(T actual, T expect);
+    template <typename T> void check(T actual, T expect, const char *msg);
     template <typename T>
-    void check(bool t, T expect, T actual, const char *msg);
+    void check(bool t, T actual, T expect, const char *msg);
     template <typename T> void check(bool t, T actual, const char *expect);
 
   private:

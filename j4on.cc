@@ -32,13 +32,13 @@ J4onParser::J4onParser(const char *filename) : index_(0), row_(0), column_(0) {
 }
 
 // Intermediate Parse part.
-template <typename T> void J4onParser::check(T expect, T actual) {
-    check(expect == actual, expect, actual, "");
+template <typename T> void J4onParser::check(T actual, T expect) {
+    check(expect == actual, actual, expect, "");
 }
 
 template <typename T>
-void J4onParser::check(T expect, T actual, const char *msg) {
-    check(expect == actual, expect, actual, msg);
+void J4onParser::check(T actual, T expect, const char *msg) {
+    check(expect == actual, actual, expect, msg);
 }
 
 template <typename T>
@@ -54,7 +54,7 @@ void J4onParser::check(bool t, T actual, const char *expect) {
 }
 
 template <typename T>
-void J4onParser::check(bool t, T expect, T actual, const char *msg) {
+void J4onParser::check(bool t, T actual, T expect, const char *msg) {
     if (t)
         return;
 
@@ -209,35 +209,28 @@ Value J4onParser::parseNumber() {
 }
 
 Value J4onParser::parseString() {
-    std::string str;
-
     check(getNextToken(), '\"', "Parsing string begin");
+
+    char *begin = beginParse();
+
     do {
         if (getCurrToken() == '\\') {
             switch (getNextToken()) {
             case '\"':
-                str += '\"';
                 break;
             case '\\':
-                str += '\\';
                 break;
             case '/':
-                str += '/';
                 break;
             case 'b':
-                str += '\b';
                 break;
             case 'f':
-                str += '\f';
                 break;
             case 'n':
-                str += '\n';
                 break;
             case 'r':
-                str += '\r';
                 break;
             case 't':
-                str += '\t';
                 break;
             default:
                 // FIME: 4 hex digits.
@@ -246,13 +239,15 @@ Value J4onParser::parseString() {
         } else if (getCurrToken() == '\"') {
             break;
         } else {
-            str += getCurrToken();
+            getCurrToken();
         }
     } while (getNextToken());
 
+    size_t len = beginParse() - begin;
+
     check(getNextToken(), '\"', "Parsing string end");
 
-    Value value(kString, String(str));
+    Value value(kString, String(begin, len));
     return value;
 }
 
