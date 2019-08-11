@@ -1,5 +1,23 @@
 ### 一个轻量级的Json解析器
 
+#### 使用
+make & ./j4on
+
+解析 json 文件，将内容生成一棵json树存在内部
+```cpp
+j4on::J4onParser parser("./json/object.json");
+parser.parse();  // 解析
+
+parser.traverse(); // 遍历并且格式化该 json 文本.
+
+// 获取 key 对应的 value.
+j4on::Value v = parser.getValue("latex-workshop.view.pdf.viewer");
+std::cout << j4on::typeToString(v.type()) << std::endl;
+j4on::String str = std::any_cast<j4on::String>(v.getAnyValue());
+```
+
+
+
 #### 设计
 - 对于每种 value 构造一个类
 - 构造一个通用 Value，包含类型和一个 `std::any` 对象

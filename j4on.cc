@@ -285,6 +285,58 @@ Value J4onParser::praseObject() {
     return value;
 }
 
+Value J4onParser::getValue(const std::string &key) const {
+    Value value = getRootValue();
+
+    if (value.type() == kArray)
+        return getValueInArray(value, key);
+    else if (value.type() == kObject)
+        return getValueInObject(value, key);
+
+    return Value(); // type is not json type.
+}
+
+Value J4onParser::getValueInArray(Value &value, const std::string &key) const {
+    j4on::Array arr = std::any_cast<j4on::Array>(value.getAnyValue());
+
+    size_t size = arr.size();
+    Value v, retValue;
+    for (size_t i = 0; i < size; ++i) {
+        v = arr[i];
+        if (v.type() == kArray)
+            retValue = getValueInArray(v, key);
+        else if (v.type() == kObject)
+            retValue = getValueInObject(v, key);
+
+        if (retValue.type() != kUnknown)
+            return retValue;
+    }
+
+    return retValue; // type is kUnknown;
+}
+
+Value J4onParser::getValueInObject(Value &value, const std::string &key) const {
+    j4on::Object obj = std::any_cast<j4on::Object>(value.getAnyValue());
+
+    size_t size = obj.size();
+    Value retValue;
+    std::pair<std::string, Value> member;
+    for (size_t i = 0; i < size; ++i) {
+        member = obj[i];
+        if (member.first == key) // match
+            retValue = member.second;
+        else if (member.second.type() == kArray)
+            retValue = getValueInArray(member.second, key);
+        else if (member.second.type() == kObject)
+            retValue = getValueInObject(member.second, key);
+
+        if (retValue.type() != kUnknown)
+            return retValue;
+    }
+
+    return retValue; // type is kUnknown;
+}
+
 void J4onParser::traverse() const {
     Value value = getRootValue();
     traverseValue(value, 0);

@@ -147,6 +147,10 @@ class J4onParser {
     // Firse Value
     Value getRootValue() const { return *rootValue_.get(); }
 
+    // get value by key.
+    // if not found, return value with type is kUnkown.
+    Value getValue(const std::string &key) const;
+
     // Traverse j4on parser tree.
     void traverse() const;
 
@@ -182,6 +186,10 @@ class J4onParser {
     void parseElements(Array &array);
     std::pair<std::string, Value> parseMember();
     void parseMembers(Object &obj);
+
+    // Get value in values.
+    Value getValueInArray(Value &value, const std::string &key) const;
+    Value getValueInObject(Value &value, const std::string &key) const;
 
     // Intermediate traversing.
     // @return value depth.

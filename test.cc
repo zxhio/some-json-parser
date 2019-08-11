@@ -14,48 +14,48 @@ void test_literal(const char *file) {
     parser.traverse();
 }
 
-void test_null() { test_literal("./test/json/null.json"); }
-void test_true() { test_literal("./test/json/true.json"); }
-void test_false() { test_literal("./test/json/false.json"); }
+void test_null() { test_literal("./json/null.json"); }
+void test_true() { test_literal("./json/true.json"); }
+void test_false() { test_literal("./json/false.json"); }
 
 void test_number() {
-    j4on::J4onParser parser("./test/json/number.json");
+    j4on::J4onParser parser("./json/number.json");
     parser.parse();
 
     j4on::Value v = parser.getRootValue();
     j4on::Number number = std::any_cast<j4on::Number>(v.getAnyValue());
- 
-    std::cout << "\nParse ./test/json/number.json\n";
+
+    std::cout << "\nParse ./json/number.json\n";
 
     parser.traverse();
 }
 
 void test_string() {
-    j4on::J4onParser parser("./test/json/string.json");
+    j4on::J4onParser parser("./json/string.json");
     parser.parse();
 
     j4on::Value v = parser.getRootValue();
     j4on::String str = std::any_cast<j4on::String>(v.getAnyValue());
 
-    std::cout << "\nParse ./test/json/string.json\n";
+    std::cout << "\nParse ./json/string.json\n";
 
     parser.traverse();
 }
 
 void test_array() {
-    j4on::J4onParser parser("./test/json/array.json");
+    j4on::J4onParser parser("./json/array.json");
     parser.parse();
 
     j4on::Value v = parser.getRootValue();
     j4on::Array arr = std::any_cast<j4on::Array>(v.getAnyValue());
 
-    std::cout << "\nParse ./test/json/array.json\n";
+    std::cout << "\nParse ./json/array.json\n";
 
     parser.traverse();
 }
 
 void test_object() {
-    j4on::J4onParser parser("./test/json/object.json");
+    j4on::J4onParser parser("./json/object.json");
     parser.parse();
 
     j4on::Value v = parser.getRootValue();
@@ -66,6 +66,30 @@ void test_object() {
     parser.traverse();
 }
 
+void tese_get_value() {
+    j4on::J4onParser parser("./json/object.json");
+    parser.parse();
+
+    j4on::Value v = parser.getValue("latex-workshop.view.pdf.viewer");
+    std::cout << j4on::typeToString(v.type()) << std::endl;
+    j4on::String str = std::any_cast<j4on::String>(v.getAnyValue());
+    std::cout << str.getString() << std::endl;
+
+    v = parser.getValue("latex-workshop.iew.pdf.viewer");
+    std::cout << j4on::typeToString(v.type()) << std::endl;
+
+    v = parser.getValue("git.autofetch");
+    std::cout << j4on::typeToString(v.type()) << std::endl;
+
+    v = parser.getValue("tools");
+    std::cout << j4on::typeToString(v.type()) << std::endl;
+
+    v = parser.getValue("C_Cpp.clang_format_style");
+    std::cout << j4on::typeToString(v.type()) << std::endl;
+    str = std::any_cast<j4on::String>(v.getAnyValue());
+    std::cout << str.getString() << std::endl;
+}
+
 int main() {
     test_null();
     test_true();
@@ -74,4 +98,5 @@ int main() {
     test_string();
     test_array();
     test_object();
+    tese_get_value();
 }
