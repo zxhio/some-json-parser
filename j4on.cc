@@ -26,6 +26,7 @@ static void printWhitespace(uint32_t n) {
 
 J4onParser::J4onParser(const char *filename) : index_(0), row_(0), column_(0) {
     std::ifstream input(filename, std::ios::binary);
+    assert(input.is_open());
     std::vector<char> filedata((std::istreambuf_iterator<char>(input)),
                                std::istreambuf_iterator<char>());
     context_ = filedata;
