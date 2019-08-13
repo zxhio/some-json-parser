@@ -95,6 +95,7 @@ class Object {
         for (auto member : members_)
             if (key == member.first)
                 return member.second;
+        return Value();
     }
 
     void add(std::pair<std::string, Value> member) {
