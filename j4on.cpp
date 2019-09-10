@@ -4,7 +4,7 @@
 // Desc:
 //   Light weight json parser of C++ implementation.
 
-#include "j4on.hh"
+#include "j4on.h"
 
 #include <cassert>
 #include <cmath>
@@ -335,37 +335,45 @@ Value J4onParser::getValueInObject(Value &value, const std::string &key) const {
     return retValue; // type is kUnknown;
 }
 
-void J4onParser::traverse() {
+void J4onParser::format() {
     Value value = getRootValue();
-    traverseValue(value, 0);
+    formatValue(value, 0);
     std::cout << formattedContext_.begin();
 }
 
-void J4onParser::traverseValue(Value &value, uint32_t depth) {
+void J4onParser::format(const char *filename) {
+    Value value = getRootValue();
+    formatValue(value, 0);
+    std::ofstream ofs(filename, std::ios::binary);
+    ofs.write(formattedContext_.begin(), formattedContext_.length());
+    ofs.close();
+}
+
+void J4onParser::formatValue(Value &value, uint32_t depth) {
     switch (value.type()) {
     case kNull:
     case kFalse:
     case kTrue:
-        return traverseLiteral(value, depth);
+        return formatLiteral(value, depth);
     case kNumber:
-        return traverseNumber(value, depth);
+        return formatNumber(value, depth);
     case kString:
-        return traverseString(value, depth);
+        return formatString(value, depth);
     case kArray:
-        return traverseArray(value, depth);
+        return formatArray(value, depth);
     case kObject:
-        return traverseObject(value, depth);
+        return formatObject(value, depth);
     case kUnknown:
         return; /* do nothing */
     }
 }
 
-void J4onParser::traverseLiteral(Value &value, uint32_t depth) {
+void J4onParser::formatLiteral(Value &value, uint32_t depth) {
     Literal lit = std::any_cast<Literal>(value.getAnyValue());
     formattedContext_ << lit.getLiteral();
 }
 
-void J4onParser::traverseNumber(Value &value, uint32_t depth) {
+void J4onParser::formatNumber(Value &value, uint32_t depth) {
     Number number = std::any_cast<Number>(value.getAnyValue());
     // replace std::to_string with snprintf("%.g");
     // in some case. eg: 1e-09, the result will be 0.0000.
@@ -375,12 +383,12 @@ void J4onParser::traverseNumber(Value &value, uint32_t depth) {
     formattedContext_ << buf;
 }
 
-void J4onParser::traverseString(Value &value, uint32_t depth) {
+void J4onParser::formatString(Value &value, uint32_t depth) {
     j4on::String str = std::any_cast<j4on::String>(value.getAnyValue());
     formattedContext_ << '\"' << str.getString() << '\"';
 }
 
-void J4onParser::traverseArray(Value &value, uint32_t depth) {
+void J4onParser::formatArray(Value &value, uint32_t depth) {
     j4on::Array arr = std::any_cast<j4on::Array>(value.getAnyValue());
 
     formattedContext_ << '[';
@@ -392,7 +400,7 @@ void J4onParser::traverseArray(Value &value, uint32_t depth) {
         v = arr[i];
         formattedContext_.indent(depth + 1);
 
-        traverseValue(v, depth + 1);
+        formatValue(v, depth + 1);
 
         if (i != arr.size() - 1) // last element.
             formattedContext_ << ",\n";
@@ -405,7 +413,7 @@ void J4onParser::traverseArray(Value &value, uint32_t depth) {
     formattedContext_ << ']';
 }
 
-void J4onParser::traverseObject(Value &value, uint32_t depth) {
+void J4onParser::formatObject(Value &value, uint32_t depth) {
     j4on::Object obj = std::any_cast<j4on::Object>(value.getAnyValue());
 
     formattedContext_ << '{';
@@ -422,7 +430,7 @@ void J4onParser::traverseObject(Value &value, uint32_t depth) {
         formattedContext_ << '\"' << member.first << "\": ";
 
         // value.
-        traverseValue(member.second, depth + 1);
+        formatValue(member.second, depth + 1);
 
         // last element.
         if (i != obj.size() - 1)

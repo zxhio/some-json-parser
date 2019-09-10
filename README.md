@@ -8,7 +8,7 @@ make & ./j4on
 j4on::J4onParser parser("./json/object.json");
 parser.parse();  // 解析
 
-parser.traverse(); // 遍历并且格式化该 json 文本.
+parser.format(); // 遍历并且格式化该 json 文本.
 
 // 获取 key 对应的 value.
 j4on::Value v = parser.getValue("latex-workshop.view.pdf.viewer");

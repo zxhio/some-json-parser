@@ -11,7 +11,7 @@ void test_literal(const char *file) {
 
     std::cout << "\nParse " << file << '\n';
 
-    parser.traverse();
+    parser.format();
 }
 
 void test_null() { test_literal("./json/null.json"); }
@@ -27,7 +27,7 @@ void test_number() {
 
     std::cout << "\nParse ./json/number.json\n";
 
-    parser.traverse();
+    parser.format();
 }
 
 void test_string() {
@@ -39,7 +39,7 @@ void test_string() {
 
     std::cout << "\nParse ./json/string.json\n";
 
-    parser.traverse();
+    parser.format();
 }
 
 void test_array() {
@@ -51,7 +51,7 @@ void test_array() {
 
     std::cout << "\nParse ./json/array.json\n";
 
-    parser.traverse();
+    parser.format();
 }
 
 void test_object() {
@@ -63,10 +63,10 @@ void test_object() {
 
     std::cout << "\nParse test/json/object.json\n";
 
-    parser.traverse();
+    parser.format();
 }
 
-void tese_get_value() {
+void test_get_value() {
     j4on::J4onParser parser("./json/object.json");
     parser.parse();
 
@@ -90,6 +90,12 @@ void tese_get_value() {
     std::cout << str.getString() << std::endl;
 }
 
+void test_format_to_file() {
+    j4on::J4onParser parser("./json/object.json");
+    parser.parse();
+    parser.format("formatted.json");
+}
+
 int main() {
     test_null();
     test_true();
@@ -98,5 +104,6 @@ int main() {
     test_string();
     test_array();
     test_object();
-    tese_get_value();
+    test_get_value();
+    test_format_to_file();
 }

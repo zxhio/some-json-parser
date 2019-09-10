@@ -23,6 +23,8 @@ class FmtBuffer {
 
     char *begin() { return buffer_.get(); }
 
+    size_t length() const { return usedBytes_; }
+
     void append(const char *str, size_t len) {
         resizeIfNedd(len);
         std::copy(str, str + len, buffer());
@@ -207,8 +209,9 @@ class J4onParser {
     // if not found, return value with type is kUnkown.
     Value getValue(const std::string &key) const;
 
-    // Traverse j4on parser tree.
-    void traverse();
+    // Format j4on parser tree to stdout or file.
+    void format();
+    void format(const char *file);
 
     // Debug.
     template <typename T> void check(T actual, T expect);
@@ -247,14 +250,14 @@ class J4onParser {
     Value getValueInArray(Value &value, const std::string &key) const;
     Value getValueInObject(Value &value, const std::string &key) const;
 
-    // Intermediate traversing.
+    // Intermediate formatting.
     // @return value depth.
-    void traverseValue(Value &value, uint32_t depth);
-    void traverseLiteral(Value &value, uint32_t depth);
-    void traverseNumber(Value &value, uint32_t depth);
-    void traverseString(Value &value, uint32_t depth);
-    void traverseArray(Value &value, uint32_t depth);
-    void traverseObject(Value &value, uint32_t depth);
+    void formatValue(Value &value, uint32_t depth);
+    void formatLiteral(Value &value, uint32_t depth);
+    void formatNumber(Value &value, uint32_t depth);
+    void formatString(Value &value, uint32_t depth);
+    void formatArray(Value &value, uint32_t depth);
+    void formatObject(Value &value, uint32_t depth);
 
     uint32_t index_;
     uint32_t row_;
