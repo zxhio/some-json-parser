@@ -1,4 +1,4 @@
-// File:    j4on.hh
+// File:    j4on.h
 // Author:  definezxh@163.com
 // Date:    2019/07/11 23:17:55
 // Desc:
@@ -6,13 +6,68 @@
 
 #pragma once
 
-#include <string_view>
 #include <string>
 #include <vector>
 #include <any>
 #include <memory>
 
+#include <string.h>
+
 namespace j4on {
+
+class FmtBuffer {
+  public:
+    FmtBuffer()
+        : usedBytes_(0), bufferSize_(23),
+          buffer_(std::make_unique<char[]>(bufferSize_)){};
+
+    char *begin() { return buffer_.get(); }
+
+    void append(const char *str, size_t len) {
+        resizeIfNedd(len);
+        std::copy(str, str + len, buffer());
+        usedBytes_ += len;
+    }
+
+    FmtBuffer &operator<<(const std::string &str) {
+        append(str.data(), str.length());
+        return *this;
+    }
+
+    FmtBuffer &operator<<(const char *str) {
+        append(str, strlen(str));
+        return *this;
+    }
+
+    FmtBuffer &operator<<(char ch) {
+        append(&ch, 1);
+        return *this;
+    }
+
+    void indent(size_t n) {
+        for (int i = 0; i < n; ++i)
+            *this << '\t';
+    }
+
+  private:
+    char *buffer() { return buffer_.get() + usedBytes_; }
+
+    void resizeIfNedd(size_t len) {
+        size_t size = usedBytes_ + len;
+        if (size < bufferSize_)
+            return;
+
+        bufferSize_ = std::max(size, bufferSize_ * 2);
+        std::unique_ptr<char[]> newBuffer =
+            std::make_unique<char[]>(bufferSize_);
+        std::copy(begin(), begin() + usedBytes_, newBuffer.get());
+        std::swap(newBuffer, buffer_);
+    }
+
+    size_t usedBytes_;
+    size_t bufferSize_;
+    std::unique_ptr<char[]> buffer_;
+};
 
 enum ValueType {
     kNull,
@@ -45,10 +100,10 @@ class Value {
 class Literal {
   public:
     explicit Literal(const char *liteal, size_t n) : literal_(liteal, n) {}
-    std::string_view getLiteral() { return literal_; };
+    const std::string &getLiteral() const { return literal_; };
 
   private:
-    std::string_view literal_;
+    std::string literal_;
 };
 
 class Number {
@@ -153,7 +208,7 @@ class J4onParser {
     Value getValue(const std::string &key) const;
 
     // Traverse j4on parser tree.
-    void traverse() const;
+    void traverse();
 
     // Debug.
     template <typename T> void check(T actual, T expect);
@@ -194,18 +249,19 @@ class J4onParser {
 
     // Intermediate traversing.
     // @return value depth.
-    void traverseValue(Value &value, uint32_t depth) const;
-    void traverseLiteral(Value &value, uint32_t depth) const;
-    void traverseNumber(Value &value, uint32_t depth) const;
-    void traverseString(Value &value, uint32_t depth) const;
-    void traverseArray(Value &value, uint32_t depth) const;
-    void traverseObject(Value &value, uint32_t depth) const;
+    void traverseValue(Value &value, uint32_t depth);
+    void traverseLiteral(Value &value, uint32_t depth);
+    void traverseNumber(Value &value, uint32_t depth);
+    void traverseString(Value &value, uint32_t depth);
+    void traverseArray(Value &value, uint32_t depth);
+    void traverseObject(Value &value, uint32_t depth);
 
     uint32_t index_;
     uint32_t row_;
     uint32_t column_;
     std::vector<char> context_;
     std::unique_ptr<Value> rootValue_;
+    FmtBuffer formattedContext_;
 };
 
 } // namespace j4on

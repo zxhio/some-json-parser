@@ -1,4 +1,4 @@
-// File:    j4on.cc
+// File:    j4on.cpp
 // Author:  definezxh@163.com
 // Date:    2019/07/11 23:35:32
 // Desc:
@@ -18,11 +18,6 @@ static const char *typesname[8] = {"null",   "false", "true",   "number",
                                    "string", "array", "object", "unknown"};
 
 const char *typeToString(ValueType type) { return typesname[type]; }
-
-static void printWhitespace(uint32_t n) {
-    for (uint32_t i = 0; i < n; ++i)
-        std::cout << '\t';
-}
 
 J4onParser::J4onParser(const char *filename) : index_(0), row_(0), column_(0) {
     std::ifstream input(filename, std::ios::binary);
@@ -340,13 +335,13 @@ Value J4onParser::getValueInObject(Value &value, const std::string &key) const {
     return retValue; // type is kUnknown;
 }
 
-void J4onParser::traverse() const {
+void J4onParser::traverse() {
     Value value = getRootValue();
     traverseValue(value, 0);
-    std::cout << '\n';
+    std::cout << formattedContext_.begin();
 }
 
-void J4onParser::traverseValue(Value &value, uint32_t depth) const {
+void J4onParser::traverseValue(Value &value, uint32_t depth) {
     switch (value.type()) {
     case kNull:
     case kFalse:
@@ -361,56 +356,61 @@ void J4onParser::traverseValue(Value &value, uint32_t depth) const {
     case kObject:
         return traverseObject(value, depth);
     case kUnknown:
-        /* do nothing */;
+        return; /* do nothing */
     }
 }
 
-void J4onParser::traverseLiteral(Value &value, uint32_t depth) const {
+void J4onParser::traverseLiteral(Value &value, uint32_t depth) {
     Literal lit = std::any_cast<Literal>(value.getAnyValue());
-    std::cout << lit.getLiteral();
+    formattedContext_ << lit.getLiteral();
 }
 
-void J4onParser::traverseNumber(Value &value, uint32_t depth) const {
+void J4onParser::traverseNumber(Value &value, uint32_t depth) {
     Number number = std::any_cast<Number>(value.getAnyValue());
-    std::cout << number.getNumber();
+    // replace std::to_string with snprintf("%.g");
+    // in some case. eg: 1e-09, the result will be 0.0000.
+    // better performance could use Grisu2/3 algorithm.
+    char buf[12];
+    snprintf(buf, sizeof(buf), "%.12g", number.getNumber());
+    formattedContext_ << buf;
 }
 
-void J4onParser::traverseString(Value &value, uint32_t depth) const {
+void J4onParser::traverseString(Value &value, uint32_t depth) {
     j4on::String str = std::any_cast<j4on::String>(value.getAnyValue());
-    std::cout << '\"' << str.getString() << '\"';
+    formattedContext_ << '\"' << str.getString() << '\"';
 }
 
-void J4onParser::traverseArray(Value &value, uint32_t depth) const {
+void J4onParser::traverseArray(Value &value, uint32_t depth) {
     j4on::Array arr = std::any_cast<j4on::Array>(value.getAnyValue());
 
-    std::cout << "[";
+    formattedContext_ << '[';
     if (arr.size() > 0)
-        std::cout << '\n';
+        formattedContext_ << '\n';
 
     Value v;
     for (size_t i = 0; i < arr.size(); ++i) {
         v = arr[i];
-        printWhitespace(depth + 1);
+        formattedContext_.indent(depth + 1);
 
         traverseValue(v, depth + 1);
 
         if (i != arr.size() - 1) // last element.
-            std::cout << ",\n";
+            formattedContext_ << ",\n";
         else
-            std::cout << '\n';
+            formattedContext_ << '\n';
     }
 
     if (arr.size() > 0)
-        printWhitespace(depth);
-    std::cout << "]";
+        formattedContext_.indent(depth);
+    formattedContext_ << ']';
 }
 
-void J4onParser::traverseObject(Value &value, uint32_t depth) const {
+void J4onParser::traverseObject(Value &value, uint32_t depth) {
     j4on::Object obj = std::any_cast<j4on::Object>(value.getAnyValue());
 
-    std::cout << "{";
+    formattedContext_ << '{';
     if (obj.size() > 0)
-        std::cout << '\n';
+        formattedContext_ << '\n';
 
     Value v;
     std::pair<std::string, Value> member;
@@ -418,22 +418,22 @@ void J4onParser::traverseObject(Value &value, uint32_t depth) const {
         member = obj[i];
 
         // print key
-        printWhitespace(depth + 1);
-        std::cout << '\"' << member.first << "\": ";
+        formattedContext_.indent(depth + 1);
+        formattedContext_ << '\"' << member.first << "\": ";
 
         // value.
         traverseValue(member.second, depth + 1);
 
         // last element.
         if (i != obj.size() - 1)
-            std::cout << ",\n";
+            formattedContext_ << ",\n";
         else
-            std::cout << '\n';
+            formattedContext_ << '\n';
     }
 
     if (obj.size() > 0)
-        printWhitespace(depth);
-    std::cout << "}";
+        formattedContext_.indent(depth);
+    formattedContext_ << '}';
 }
 
 } // namespace j4on

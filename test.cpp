@@ -1,4 +1,4 @@
-#include "j4on.hh"
+#include "j4on.h"
 
 #include <iostream>
 
