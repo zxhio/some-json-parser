@@ -18,7 +18,8 @@ namespace j4on {
 class FmtBuffer {
   public:
     FmtBuffer()
-        : usedBytes_(0), bufferSize_(23),
+        : usedBytes_(0),
+          bufferSize_(23),
           buffer_(std::make_unique<char[]>(bufferSize_)){};
 
     char *begin() { return buffer_.get(); }
@@ -88,10 +89,10 @@ const char *typeToString(ValueType type);
 class Value {
   public:
     Value() : type_(kUnknown) {}
-    Value(ValueType type, std::any value) : type_(type), value_(value) {}
+    Value(ValueType type, const std::any &value) : type_(type), value_(value) {}
     ValueType type() const { return type_; }
-    std::any getAnyValue() const { return value_; }
-    void setAnyValue(std::any value) { value_ = value; }
+    const std::any &getAnyValue() const { return value_; }
+    void setAnyValue(const std::any &value) { value_ = value; }
 
   private:
     ValueType type_;
