@@ -1,4 +1,5 @@
 .vscode/
+rust/target/
 *.exe
 *.out
 foo.json
